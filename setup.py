@@ -22,7 +22,7 @@ setup(
     url='https://github.com/mmua/webinar-processor',
     packages=find_packages(include=['webinar_processor', 'webinar_processor.*']),
     package_data={
-        'webinar_processor': ['../conf/*'],  # include conf files in webinar package
+        'webinar_processor': ['../conf/*', '../models/*'],  # include conf files in webinar package
     },
     entry_points={
         'console_scripts': [
