@@ -20,13 +20,11 @@ setup(
     author="Maxim Moroz",
     author_email='mimoroz@edu.hse.ru',
     url='https://github.com/mmua/webinar-processor',
-    packages=find_packages(include=['webinar_processor']),
+    packages=find_packages(include=['webinar_processor', 'webinar_processor.*']),
+    package_data={
+        'webinar_processor': ['../conf/*'],  # include conf files in webinar package
+    },
     entry_points={
-        # ATTENTION! ACHTUNG! ATENCIÓN!
-        # 
-        # The following lines determine what your CLI program is 
-        # called and where it will look for it. Please edit to suit
-        # your needs
         'console_scripts': [
             'webinar_processor=webinar_processor:cli'
         ]

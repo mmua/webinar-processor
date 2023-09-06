@@ -10,11 +10,15 @@ from pytube import YouTube
 @click.argument('path', default=None)
 def yt_download(url: str, path: str):
     """
-    Downloads YouTube streams to specified directory
+    Downloads YouTube video to specified directory
     """
     yt = YouTube(url)
-    for stream in yt.streams:
-        stream.download(path)
+    yt.streams \
+        .filter(progressive=True, file_extension='mp4') \
+        .order_by('resolution') \
+        .desc() \
+        .first() \
+        .download(path)
 
 
 if __name__ == "__main__":

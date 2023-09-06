@@ -19,3 +19,4 @@ def cli():
 
 # Add commands
 cli.add_command(commands.yt_download)
+cli.add_command(commands.transcribe)
