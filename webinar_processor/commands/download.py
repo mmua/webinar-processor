@@ -1,7 +1,10 @@
 """Video downloader by URL"""
 
+import os
 import sys
 import click
+import requests
+
 from pytube import YouTube
 
 
@@ -19,6 +22,17 @@ def yt_download(url: str, path: str):
         .desc() \
         .first() \
         .download(path)
+    
+    # download poster
+    posters_path = os.path.join(path, "posters")
+    if not os.path.exists(posters_path):
+        os.makedirs(posters_path)
+
+    file_name = os.path.basename(yt.thumbnail_url)
+    file_path = os.path.join(posters_path, file_name)
+    response = requests.get(url)
+    with open(file_path, 'wb') as file:
+        file.write(response.content)
 
 
 if __name__ == "__main__":
