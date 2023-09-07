@@ -1,5 +1,6 @@
 pytube==15.0.0
 click==8.1.7
-pywhispercpp==1.1.3
 pyannote-audio==2.1.1
-openai-whisper==20230314
+openai-whisper== 20230314
+python_speech_features==0.6.0
+speechbrain==0.5.15
