@@ -28,9 +28,10 @@ def yt_download(url: str, path: str):
     if not os.path.exists(posters_path):
         os.makedirs(posters_path)
 
-    file_name = os.path.basename(yt.thumbnail_url)
+    file_name = "poster.jpg"
     file_path = os.path.join(posters_path, file_name)
-    response = requests.get(url)
+    response = requests.get(yt.thumbnail_url)
+
     with open(file_path, 'wb') as file:
         file.write(response.content)
 

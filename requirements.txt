@@ -4,3 +4,7 @@ pyannote-audio==2.1.1
 openai-whisper== 20230314
 python_speech_features==0.6.0
 speechbrain==0.5.15
+python-dotenv==1.0.0
+requests==2.31.0
+openai==0.28.1
+spacy==3.6.1

@@ -11,6 +11,15 @@ Functions are:
 * Create video content summary in text form
 * detect slides in video and insert them into subtitles
 
+## Введение
+За основу взят пост https://vas3k.club/post/18916/#2-Ustanavlivaem-bibliot
+
+Первый опыт был позитивный, но на одном из видео whisper.cpp зациклился и сошел с ума. Как вариант, можно было бы нарезать аудио на сегменты, но стандартный whisper с задачей справился гораздо лучше. Поэтому решено было использовать его. Для ускорения - использовать aws g5 ноду.
+
+Диаризация спикеров делается с помощью pyannote - https://github.com/yinruiqing/pyannote-whisper
+
+Любопытно будет повторить: https://github.com/pyannote/pyannote-audio/blob/develop/tutorials/adapting_pretrained_pipeline.ipynb
+
 ## Example
 "Коучинговый стиль управления как инструмент современного руководителя"
 
@@ -65,7 +74,8 @@ webinar_processor yt-download https://youtu.be/mKqDUYekM3M video/coaching/
 ## Транскрипция с диаризацией
 webinar_processor transcribe /home/webinar/whisper.cpp/models/ggml-large.bin video/coaching/Коучинг\ как\ инструмент\ руководителя.mp4  video/coaching/transcript.json
 
-## Выбор постера для видео
+## Отправка вебинара на сайт
+
 
 # Идеи по улучшению качества
 Существующие проблемы:
@@ -179,3 +189,8 @@ aws ec2 run-instances --image-id ami-xxxxxx --count 1 --instance-type g5.xlarge 
 ```
 sudo apt install -y python3-venv ffmpeg
 ```
+
+
+# Установка словарей spacy
+python -m spacy download en_core_web_sm
+python -m spacy download ru_core_news_md

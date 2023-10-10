@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn import preprocessing
-from python_speech_features import mfcc
-from python_speech_features import delta
+from python_speech_features import mfcc, delta
 
 def extract_features(rate: int, audio: np.ndarray):
         """
@@ -10,8 +9,9 @@ def extract_features(rate: int, audio: np.ndarray):
         Normalization (CMS) and combine it with MFCC deltas and the MFCC double
         deltas.
      
-        Args: 	    
-            audio_path (str) : path to wave file without silent moments. 
+        Args:
+            rate (int) : The samplerate of the signal
+            audio (np.ndarray) : The audio signal from which to compute features
         Returns: 	    
             (array) : Extracted features matrix. 	
         """
