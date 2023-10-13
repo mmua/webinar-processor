@@ -67,6 +67,8 @@ pip3 install openai-whisper pywhispercpp pyannote-audio
 ```
 
 # Работа с webinar_processor
+```
+```
 
 ## Загрузка видео
 webinar_processor yt-download https://youtu.be/mKqDUYekM3M video/coaching/

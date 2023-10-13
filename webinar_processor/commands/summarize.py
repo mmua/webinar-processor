@@ -76,22 +76,34 @@ def get_token_limit(model: str) -> int:
 
 
 def create_summary(text: str, language: str, model: str, prompt: str) -> str:
-    # Use language to create prompt
-
     token_limit = get_token_limit(model)
     resume = ""
-    for segment in generate_text_segments(model, text, language, token_limit):
+    segments = list(generate_text_segments(model, text, language, token_limit))
+    click.echo(click.style(f'text length {len(text)} split into {len(segments)} segments', fg='green'))
+    for segment in segments:
         resume = get_completion(prompt.format(resume=resume, text=segment), model)
-        # print(segment, resume)
     return resume
+
+
+def create_story(text: str, summary: str, language: str, model: str, prompt_template: str) -> str:
+    token_limit = get_token_limit(model)
+    story = ""
+    _ = summary
+
+    segments = list(generate_text_segments(model, text, language, token_limit))
+    for segment in segments:
+        prompt = prompt_template.format(text=segment)
+        part = get_completion(prompt, model)
+        story += "\n\n" + part
+    return story
 
 
 @click.command()
 @click.argument('asr_path', nargs=1)
-@click.argument('language', nargs=1, default="ru")
 @click.argument('model', nargs=1, default="gpt-3.5-turbo-16k")
+@click.option('--language', default="ru")
 @click.option('--prompt-file', type=click.Path(exists=True), help='Path to a file containing the prompt')
-def summary(asr_path: str, language: str, model: str, prompt_file: str):
+def summarize(asr_path: str, model: str, language: str, prompt_file: str):
     """
     Create transcript summary
     """
@@ -111,3 +123,33 @@ def summary(asr_path: str, language: str, model: str, prompt_file: str):
 
     summary = create_summary(data["text"], language, model, prompt)
     click.echo(summary)
+
+
+@click.command()
+@click.argument('asr_path', nargs=1)
+@click.argument('summary_file', type=click.File("r", encoding="utf-8"), nargs=1)
+@click.argument('model', nargs=1, default="gpt-3.5-turbo-16k")
+@click.option('--language', default="ru")
+@click.option('--prompt-file', type=click.Path(exists=True), help='Path to a file containing the prompt')
+def storytell(asr_path: str, summary_file: click.File, model: str, language: str, prompt_file: str):
+    """
+    Create a story
+    """
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    if openai.api_key is None:
+        click.echo(click.style(f'Error: OpenAI keys is not set', fg='red'))
+        raise click.Abort
+
+    with open(asr_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    summary = summary_file.read()
+
+    if not prompt_file:
+        prompt_file = get_config_path("long-story.txt")
+
+    with open(prompt_file, "r", encoding="utf-8") as pf:
+        prompt_template = pf.read()
+
+    story = create_story(data["text"], summary, language, model, prompt_template)
+    click.echo(story)

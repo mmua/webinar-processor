@@ -26,8 +26,18 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
             "pyannote/speaker-diarization-3.0",
             use_auth_token=hf_token
         )
+
         # Сегментация аудио-файла на реплики спикеров. Путь обязательно абсолютный.
         diarization_result = pipeline(wav_filename)
+
+        diarization_list = []
+        # print the result
+        for turn, _, speaker in diarization_result.itertracks(yield_label=True):
+                diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
+  
+        with open("diarization.json", "w", encoding="utf-8") as json_file:
+            serialized_result = json.dumps(diarization_list, indent=4, ensure_ascii=False)
+            json_file.write(serialized_result)
 
         # Пересечение расшифровки и сегментаци.
         final_result = diarize_text(transcription_result, diarization_result)

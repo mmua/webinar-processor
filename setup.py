@@ -14,7 +14,7 @@ requirements = [
 
 setup(
     name='webinar_processor',
-    version='0.1.0',
+    version='0.2.0',
     description="HSE Organization & Project Management Webinar Processor",
     long_description=readme,
     author="Maxim Moroz",
