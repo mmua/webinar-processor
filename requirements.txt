@@ -212,7 +212,6 @@ urllib3==1.26.16
 uvicorn==0.23.2
 wasabi==1.1.2
 wcwidth==0.2.6
--e git+ssh://git@github.com/mmua/webinar-processor.git@ea90e57f1120720c71e2cd5b57a08a383a965b69#egg=webinar_processor
 websocket-client==1.6.4
 websockets==11.0.3
 Werkzeug==2.3.7

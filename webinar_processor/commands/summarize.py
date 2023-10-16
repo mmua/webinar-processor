@@ -67,16 +67,24 @@ def generate_text_segments(model, long_text, language, token_limit):
         yield ' '.join(current_segment)
 
 
-def get_token_limit(model: str) -> int:
+def get_token_limit_summary(model: str) -> int:
     token_limit = {
         'gpt-3.5-turbo-16k': 10000,
-        'gpt-4': 3500
+        'gpt-4': 5000
+    }
+    return token_limit.get(model, 2500)
+
+
+def get_token_limit_story(model: str) -> int:
+    token_limit = {
+        'gpt-3.5-turbo-16k': 8000,
+        'gpt-4': 4000
     }
     return token_limit.get(model, 2000)
 
 
 def create_summary(text: str, language: str, model: str, prompt: str) -> str:
-    token_limit = get_token_limit(model)
+    token_limit = get_token_limit_summary(model)
     resume = ""
     segments = list(generate_text_segments(model, text, language, token_limit))
     click.echo(click.style(f'text length {len(text)} split into {len(segments)} segments', fg='green'))
@@ -86,7 +94,7 @@ def create_summary(text: str, language: str, model: str, prompt: str) -> str:
 
 
 def create_story(text: str, summary: str, language: str, model: str, prompt_template: str) -> str:
-    token_limit = get_token_limit(model)
+    token_limit = get_token_limit_story(model)
     story = ""
     _ = summary
 
