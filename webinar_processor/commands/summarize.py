@@ -19,12 +19,6 @@ def get_completion(prompt, model="gpt-3.5-turbo-16k"):
   )
   return response.choices[0].message["content"]
 
-def update_transcript(transcript: List):
-    return []
-
-def create_long_summary(text: str):
-    return ""
-
 
 def split_text_to_sentences(text: str, language: str = "ru") -> List[str]:
     nlp = spacy.load("ru_core_news_md")
@@ -69,16 +63,16 @@ def generate_text_segments(model, long_text, language, token_limit):
 
 def get_token_limit_summary(model: str) -> int:
     token_limit = {
-        'gpt-3.5-turbo-16k': 10000,
-        'gpt-4': 5000
+        'gpt-3.5-turbo-16k': 5000,
+        'gpt-4': 2600
     }
     return token_limit.get(model, 2500)
 
 
 def get_token_limit_story(model: str) -> int:
     token_limit = {
-        'gpt-3.5-turbo-16k': 8000,
-        'gpt-4': 4000
+        'gpt-3.5-turbo-16k': 7000,
+        'gpt-4': 3500
     }
     return token_limit.get(model, 2000)
 
@@ -89,9 +83,15 @@ def create_summary(text: str, language: str, model: str, prompt: str) -> str:
     segments = list(generate_text_segments(model, text, language, token_limit))
     click.echo(click.style(f'text length {len(text)} split into {len(segments)} segments', fg='green'))
     for segment in segments:
-        resume = get_completion(prompt.format(resume=resume, text=segment), model)
-    return resume
+        try:
+            request = prompt.format(resume=resume, text=segment)
+            resume = get_completion(request, model)
+        except openai.error.InvalidRequestError:
+            click.echo(click.style(f'Error: OpenAI invalid request', fg='red'))
+            click.echo(request)
+            break
 
+    return resume
 
 def create_story(text: str, summary: str, language: str, model: str, prompt_template: str) -> str:
     token_limit = get_token_limit_story(model)
