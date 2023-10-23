@@ -9,12 +9,22 @@ with open('README.md', encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 requirements = [
-    'Click>=8.0',
+    'pytube==15.0.0',
+    'Click==8.1.7',
+    'pyannote.audio==3.0.1',
+    'openai-whisper==20230918',
+    'python_speech_features==0.6.0',
+    'speechbrain==0.5.15',
+    'python-dotenv==1.0.0',
+    'requests==2.31.0',
+    'openai==0.28.1',
+    'spacy==3.6.1',
+    'opencv-python==4.8.1.78'
 ]
 
 setup(
     name='webinar_processor',
-    version='0.2.0',
+    version='0.3.0',
     description="HSE Organization & Project Management Webinar Processor",
     long_description=readme,
     author="Maxim Moroz",
