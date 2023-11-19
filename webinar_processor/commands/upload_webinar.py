@@ -7,23 +7,32 @@ from dotenv import load_dotenv, find_dotenv
 @click.option('--title', prompt='Title of the webinar', help='Title of the webinar.')
 @click.option('--slug', prompt='Slug', help='Unique slug for the webinar.')
 @click.option('--video_file', prompt='Path to the video file', help='Path to the video file.', type=click.Path(exists=True))
-@click.option('--poster_file', prompt='Path to the poster file', help='Path to the poster file.', type=click.Path(exists=True))
-@click.option('--transcript_file', prompt='Path to the transcript file', help='Path to the transcript file.', type=click.Path(exists=True))
-@click.option('--endpoint', prompt='API Endpoint', help='API endpoint to upload the webinar.', default=None)
+@click.option('--poster_file', help='Path to the poster file.', type=click.Path(exists=False), default=None)
+@click.option('--transcript_file', help='Path to the transcript file.', type=click.Path(exists=False), default=None)
+@click.option('--endpoint', help='API endpoint to upload the webinar.', default=None)
 def upload_webinar(title, slug, video_file, poster_file, transcript_file, endpoint):
     """Upload a Webinar to the specified API endpoint."""
 
-    _ = load_dotenv(find_dotenv())
+    _ = load_dotenv(find_dotenv(usecwd=True))
     token = os.getenv("EDU_PATH_TOKEN", None)
     if token is None:
         click.echo(click.style(f'Error: Access Token is not set', fg='red'))
         raise click.Abort
 
     if endpoint is None:
-        token = os.getenv("EDU_PATH_API_ENDPOINT", None)
+        endpoint = os.getenv("EDU_PATH_API_ENDPOINT", None)
+
     if endpoint is None:
         click.echo(click.style(f'Error: API Endpoint is not set', fg='red'))
         raise click.Abort
+
+    if poster_file is None:
+        video_dir = os.path.dirname(video_file)
+        poster_file = os.path.join(video_dir, "posters", "poster.jpg")
+
+    if transcript_file is None:
+        transcript_dir = os.path.dirname(video_file)
+        transcript_file = os.path.join(transcript_dir, "transcript.json")
 
     # Prepare headers
     headers = {
