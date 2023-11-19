@@ -5,7 +5,7 @@ from typing import Dict, List
 import click
 import json
 
-from webinar_processor.utils.ffmpeg import convert_mp4_to_wav
+from webinar_processor.utils.ffmpeg import convert_mp4_to_wav, mp4_silence_remove
 from webinar_processor.utils.package import get_config_path
 from webinar_processor.utils.path import get_wav_filename
 
@@ -35,9 +35,6 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
         for turn, _, speaker in diarization_result.itertracks(yield_label=True):
                 diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
   
-        with open("diarization.json", "w", encoding="utf-8") as json_file:
-            serialized_result = json.dumps(diarization_list, indent=4, ensure_ascii=False)
-            json_file.write(serialized_result)
 
         # Пересечение расшифровки и сегментаци.
         final_result = diarize_text(transcription_result, diarization_result)
@@ -68,15 +65,24 @@ def transcribe_wav(wav_filename: str, language="ru"):
 
 @click.command()
 @click.argument('webinar_path', nargs=1)
-@click.argument('transcript_path', nargs=1)
+@click.argument('transcript_path', default='')
 @click.argument('language', nargs=1, default="ru")
 def transcribe(webinar_path: str, transcript_path: str, language: str):
     """
     Transcribe video file with speaker detection
     """
+    if not transcript_path:
+        transcript_dir = os.path.dirname(webinar_path)
+        transcript_path = os.path.join(transcript_dir, "transcript.json")
+
+    # trim video 
+    output_file, ext = os.path.splitext(webinar_path)
+    output_name = output_file + ".stripped" + ext
+    mp4_silence_remove(webinar_path, output_name)
+
     with tempfile.TemporaryDirectory() as tmpdir:
-        wav_filename = get_wav_filename(webinar_path, tmpdir)
-        convert_mp4_to_wav(webinar_path, wav_filename)
+        wav_filename = get_wav_filename(output_name, tmpdir)
+        convert_mp4_to_wav(output_name, wav_filename)
 
         asr_result = transcribe_wav(wav_filename, language=language)
         with open(transcript_path + ".asr", "w", encoding="utf-8") as json_file:

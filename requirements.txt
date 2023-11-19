@@ -9,3 +9,4 @@ requests==2.31.0
 openai==0.28.1
 spacy==3.6.1
 opencv-python==4.8.1.78
+moviepy==1.0.3

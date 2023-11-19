@@ -19,12 +19,13 @@ requirements = [
     'requests==2.31.0',
     'openai==0.28.1',
     'spacy==3.6.1',
-    'opencv-python==4.8.1.78'
+    'opencv-python==4.8.1.78',
+    'moviepy==1.0.3'
 ]
 
 setup(
     name='webinar_processor',
-    version='0.3.0',
+    version='0.5.0',
     description="HSE Organization & Project Management Webinar Processor",
     long_description=readme,
     author="Maxim Moroz",
