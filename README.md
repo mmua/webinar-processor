@@ -78,6 +78,20 @@ webinar_processor transcribe /home/webinar/whisper.cpp/models/ggml-large.bin vid
 
 ## Отправка вебинара на сайт
 
+## Создание текста вебинара из транскрипции
+```
+webinar_processor storytell --prompt-file conf/text-prompt.txt video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
+```
+
+## Определение ключевых тем вебинара
+```
+webinar_processor topics video/04-gm/webinar-text.txt --output-file video/04-gm/topics.txt
+```
+
+## Создание теста по теме
+```
+webinar_processor summarize-with-context video/04-gm/webinar-text.txt video/04-gm/topics.txt conf/quiz-prompt.txt --output-path video/04-gm/quiz-initial.txt
+```
 
 # Идеи по улучшению качества
 Существующие проблемы:

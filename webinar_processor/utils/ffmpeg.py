@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from typing import List
 
@@ -24,6 +25,9 @@ def get_non_silence_intervals(input_path: str) -> List[float]:
     matches = re.findall(pattern, output)
     times = [float(time) for _, time, _ in matches]
     
+    if not times: # no long silence intervals
+        return None
+
     # If the video starts with silence, start from the end of silence
     if times[0] == 0:
         times.pop(0)
@@ -45,11 +49,13 @@ def mp4_silence_remove(input_path: str, output_path: str):
 
     times = get_non_silence_intervals(input_path)
 
-    clip = mpy.VideoFileClip(input_path)
-    # Create a list of video clips that are not silence
-    clips = [clip.subclip(start, end) for start, end in zip(times[::2], times[1::2]) if end - start > 1]
+    if times:
+        clip = mpy.VideoFileClip(input_path)
+        # Create a list of video clips that are not silence
+        clips = [clip.subclip(start, end) for start, end in zip(times[::2], times[1::2]) if end - start > 1]
 
-    # Concatenate the clips and write the result to a file
-    final_clip = mpy.concatenate_videoclips(clips)
-    final_clip.write_videofile(output_path)
-
+        # Concatenate the clips and write the result to a file
+        final_clip = mpy.concatenate_videoclips(clips)
+        final_clip.write_videofile(output_path)
+    else:
+        shutil.copyfile(input_path, output_path)

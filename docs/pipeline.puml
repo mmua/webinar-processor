@@ -1,0 +1,17 @@
+@startuml pipeline
+start
+:download video;
+:transcribe video;
+:create text from transcription;
+:create key topics from text;
+fork
+:create summary from text;
+fork again
+:create quiz from text;
+fork again
+:create structured text;
+end fork
+:upload video to API;
+:upload quiz to API;
+stop
+@enduml
