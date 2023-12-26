@@ -16,7 +16,7 @@ def yt_download(url: str, path: str):
     Downloads YouTube video to specified directory
     """
     yt = YouTube(url)
-    yt.streams \
+    video_path = yt.streams \
         .filter(progressive=True, file_extension='mp4') \
         .order_by('resolution') \
         .desc() \
@@ -34,6 +34,8 @@ def yt_download(url: str, path: str):
 
     with open(file_path, 'wb') as file:
         file.write(response.content)
+
+    click.echo(video_path)
 
 
 if __name__ == "__main__":

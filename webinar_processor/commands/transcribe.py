@@ -11,45 +11,45 @@ from webinar_processor.utils.path import get_wav_filename
 
 
 def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
-        from pyannote.audio import Pipeline
-        from pyannote_whisper.utils import diarize_text
+    from pyannote.audio import Pipeline
+    from pyannote_whisper.utils import diarize_text
 
-        # # Указываем путь до файла с конфигом, он должен быть в той же директории, как сказано на шаге 3.
-        # config_path = get_config_path('diarization.yaml')
-        # pipeline = Pipeline.from_pretrained(config_path)
-        hf_token = os.getenv("HUGGING_FACE_TOKEN")
-        if hf_token is None:
-            click.echo(click.style(f'Error: HuggingFace token is not set', fg='red'))
-            raise click.Abort
+    # # Указываем путь до файла с конфигом, он должен быть в той же директории, как сказано на шаге 3.
+    # config_path = get_config_path('diarization.yaml')
+    # pipeline = Pipeline.from_pretrained(config_path)
+    hf_token = os.getenv("HUGGING_FACE_TOKEN")
+    if hf_token is None:
+        click.echo(click.style(f'Error: HuggingFace token is not set', fg='red'))
+        raise click.Abort
 
-        pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.0",
-            use_auth_token=hf_token
-        )
+    pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization-3.1",
+        use_auth_token=hf_token
+    )
 
-        # Сегментация аудио-файла на реплики спикеров. Путь обязательно абсолютный.
-        diarization_result = pipeline(wav_filename)
+    # Сегментация аудио-файла на реплики спикеров. Путь обязательно абсолютный.
+    diarization_result = pipeline(wav_filename)
 
-        diarization_list = []
-        # print the result
-        for turn, _, speaker in diarization_result.itertracks(yield_label=True):
-                diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
-  
+    diarization_list = []
+    # print the result
+    for turn, _, speaker in diarization_result.itertracks(yield_label=True):
+            diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
 
-        # Пересечение расшифровки и сегментаци.
-        final_result = diarize_text(transcription_result, diarization_result)
 
-        # Вывод результата.
-        result = []
-        for seg, spk, text in final_result:
-            segment = {
-                'start': seg.start,
-                'end': seg.end,
-                'speaker': spk,
-                'text': text
-            }
-            result.append(segment)
-        return result
+    # Пересечение расшифровки и сегментаци.
+    final_result = diarize_text(transcription_result, diarization_result)
+
+    # Вывод результата.
+    result = []
+    for seg, spk, text in final_result:
+        segment = {
+            'start': seg.start,
+            'end': seg.end,
+            'speaker': spk,
+            'text': text
+        }
+        result.append(segment)
+    return result
 
 
 def transcribe_wav(wav_filename: str, language="ru"):
@@ -85,7 +85,9 @@ def transcribe(webinar_path: str, transcript_path: str, language: str):
         convert_mp4_to_wav(output_name, wav_filename)
 
         asr_result = transcribe_wav(wav_filename, language=language)
-        with open(transcript_path + ".asr", "w", encoding="utf-8") as json_file:
+
+        asr_path = transcript_path + ".asr"
+        with open(asr_path, "w", encoding="utf-8") as json_file:
             serialized_result = json.dumps(asr_result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)
 
@@ -94,7 +96,7 @@ def transcribe(webinar_path: str, transcript_path: str, language: str):
             serialized_result = json.dumps(result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)
 
-        return asr_result, result
+        click.echo(asr_path)
 
 
 @click.command()

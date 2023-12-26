@@ -6,11 +6,11 @@ from dotenv import load_dotenv, find_dotenv
 @click.command()
 @click.option('--title', prompt='Title of the webinar', help='Title of the webinar.')
 @click.option('--slug', prompt='Slug', help='Unique slug for the webinar.')
-@click.option('--video_file', prompt='Path to the video file', help='Path to the video file.', type=click.Path(exists=True))
 @click.option('--poster_file', help='Path to the poster file.', type=click.Path(exists=False), default=None)
 @click.option('--transcript_file', help='Path to the transcript file.', type=click.Path(exists=False), default=None)
 @click.option('--endpoint', help='API endpoint to upload the webinar.', default=None)
-def upload_webinar(title, slug, video_file, poster_file, transcript_file, endpoint):
+@click.argument('video_file', type=click.Path(exists=True))
+def upload_webinar(video_file, title, slug, poster_file, transcript_file, endpoint):
     """Upload a Webinar to the specified API endpoint."""
 
     _ = load_dotenv(find_dotenv(usecwd=True))
@@ -26,24 +26,35 @@ def upload_webinar(title, slug, video_file, poster_file, transcript_file, endpoi
         click.echo(click.style(f'Error: API Endpoint is not set', fg='red'))
         raise click.Abort
 
+    video_dir = os.path.dirname(video_file)
     if poster_file is None:
-        video_dir = os.path.dirname(video_file)
         poster_file = os.path.join(video_dir, "posters", "poster.jpg")
 
     if transcript_file is None:
-        transcript_dir = os.path.dirname(video_file)
-        transcript_file = os.path.join(transcript_dir, "transcript.json")
+        transcript_file = os.path.join(video_dir, "transcript.json")
 
     # Prepare headers
     headers = {
         'Authorization': f'Bearer {token}',
     }
 
+    summary = ""
+    summary_path = os.path.join(video_dir, "summary.txt")
+    if os.path.exists(summary_path):
+        with open(summary_path, "r", encoding="utf-8") as f:
+            summary = f.read()
+
+    long_summary = ""
+    story_path = os.path.join(video_dir, "story.txt")
+    if os.path.exists(story_path):
+        with open(story_path, "r", encoding="utf-8") as f:
+            long_summary = f.read()
+
     # Prepare data payload
     data = {
         'title': title,
-        'summary': "",
-        'long_summary': "",
+        'summary': summary,
+        'long_summary': long_summary,
         'slug': slug,
     }
 
@@ -62,6 +73,3 @@ def upload_webinar(title, slug, video_file, poster_file, transcript_file, endpoi
         click.echo(click.style('Webinar successfully uploaded!', fg='green'))
     else:
         click.echo(click.style(f'Failed to upload the Webinar! Response: {response.text}', fg='red'))
-
-if __name__ == '__main__':
-    upload_webinar()
