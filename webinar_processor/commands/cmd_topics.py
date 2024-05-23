@@ -18,7 +18,7 @@ def topics(text_file: click.File, language: str, output_file: str):
     Create a story
     """
     intermediate_model = "gpt-3.5-turbo-16k"
-    final_model = "gpt-4-1106-preview"
+    final_model = "gpt-4o"
 
     openai.api_key = os.getenv("OPENAI_API_KEY")
     if openai.api_key is None:
