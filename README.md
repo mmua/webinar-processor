@@ -74,7 +74,12 @@ pip3 install openai-whisper pywhispercpp pyannote-audio
 webinar_processor yt-download https://youtu.be/mKqDUYekM3M video/coaching/
 
 ## Транскрипция с диаризацией
-webinar_processor transcribe /home/webinar/whisper.cpp/models/ggml-large.bin video/coaching/Коучинг\ как\ инструмент\ руководителя.mp4  video/coaching/transcript.json
+webinar_processor transcribe video/coaching/Коучинг\ как\ инструмент\ руководителя.mp4 
+
+## Определение ключевых тем вебинара
+```
+webinar_processor topics video/04-gm/webinar-text.txt --output-file video/04-gm/topics.txt
+```
 
 ## Отправка вебинара на сайт
 
@@ -83,10 +88,7 @@ webinar_processor transcribe /home/webinar/whisper.cpp/models/ggml-large.bin vid
 webinar_processor storytell --prompt-file conf/text-prompt.txt video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
 ```
 
-## Определение ключевых тем вебинара
-```
-webinar_processor topics video/04-gm/webinar-text.txt --output-file video/04-gm/topics.txt
-```
+
 
 ## Создание теста по теме
 ```
@@ -209,4 +211,5 @@ sudo apt install -y python3-venv ffmpeg
 
 # Установка словарей spacy
 python -m spacy download en_core_web_sm
+python -m spacy download en_core_web_md
 python -m spacy download ru_core_news_md
