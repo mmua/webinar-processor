@@ -11,3 +11,4 @@ spacy==3.6.1
 opencv-python==4.8.1.78
 moviepy==1.0.3
 tenacity==8.2.3
+git+https://huggingface.co/kontur-ai/sbert_punc_case_ru@f778dc6c63bb0ec235a220488862509810e54583
