@@ -18,7 +18,7 @@ def quiz(text_file: click.File, topics_file: click.File, language: str, output_f
     """
     Create a quiz
     """
-    final_model = "gpt-4-1106-preview"
+    final_model = "gpt-4o"
 
     openai.api_key = os.getenv("OPENAI_API_KEY")
     if openai.api_key is None:

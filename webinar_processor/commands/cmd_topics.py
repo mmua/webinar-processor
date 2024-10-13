@@ -11,7 +11,7 @@ _ = load_dotenv(find_dotenv())
 
 @click.command()
 @click.argument('text_file', type=click.File("r", encoding="utf-8"), nargs=1)
-@click.argument('intermediate_model', nargs=1, default="gpt-3.5-turbo")
+@click.argument('intermediate_model', nargs=1, default="gpt-4o-mini")
 @click.argument('final_model', nargs=1, default=DEFAULT_LONG_CONTEXT_MODEL)
 @click.option('--language', default="ru")
 @click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')
@@ -28,7 +28,6 @@ def topics(text_file: click.File, intermediate_model: str, final_model: str, lan
 
     intermediate_prompt_path = get_config_path("intermediate-topics-prompt.txt")
     final_prompt_path = get_config_path("final-topics-prompt-onepass.txt")
-
 
     with open(intermediate_prompt_path, "r", encoding="utf-8") as pf:
         intermediate_prompt_template = pf.read()

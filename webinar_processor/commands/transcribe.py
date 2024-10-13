@@ -19,7 +19,7 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
     # pipeline = Pipeline.from_pretrained(config_path)
     hf_token = os.getenv("HUGGING_FACE_TOKEN")
     if hf_token is None:
-        click.echo(click.style(f'Error: HuggingFace token is not set', fg='red'))
+        click.echo(click.style('Error: HuggingFace token is not set', fg='red'))
         raise click.Abort
 
     pipeline = Pipeline.from_pretrained(
@@ -33,8 +33,7 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
     diarization_list = []
     # print the result
     for turn, _, speaker in diarization_result.itertracks(yield_label=True):
-            diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
-
+        diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
 
     # Пересечение расшифровки и сегментаци.
     final_result = diarize_text(transcription_result, diarization_result)
@@ -50,7 +49,6 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
         }
         result.append(segment)
     return result
-
 
 def transcribe_wav(wav_filename: str, language="ru"):
     import whisper
