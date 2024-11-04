@@ -56,7 +56,7 @@ def transcribe_wav(wav_filename: str, language="ru"):
          "ru": "Добрый день, это вебинар по управлению организациями и проектами.",
          "en": "Hello, this is project managment webinar. Stay tuned."
     }
-    model = whisper.load_model("large-v2")
+    model = whisper.load_model("large-v3")
     asr_result = model.transcribe(wav_filename, language=language, initial_prompt=prompts[language])
     return asr_result
 
