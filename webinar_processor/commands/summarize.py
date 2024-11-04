@@ -10,11 +10,12 @@ from webinar_processor.utils.openai import create_summary_with_context, text_tra
 
 _ = load_dotenv(find_dotenv())
 
+DEFAULT_SUMMARIZATION_MODEL="gpt-4o-mini"
 
 @click.command()
 @click.argument('asr_path', nargs=1)
 @click.argument('topics_path', nargs=1, default='')
-@click.argument('model', nargs=1, default="gpt-3.5-turbo")
+@click.argument('model', nargs=1, default=DEFAULT_SUMMARIZATION_MODEL)
 @click.option('--language', default="ru")
 @click.option('--prompt-file', type=click.Path(exists=True), help='Path to a file containing the prompt')
 @click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')
@@ -59,7 +60,7 @@ def summarize(asr_path: str, topics_path: str, model: str, language: str, prompt
 
 @click.command()
 @click.argument('asr_file', type=click.File("r", encoding="utf-8"), nargs=1)
-@click.argument('model', nargs=1, default="gpt-3.5-turbo-16k")
+@click.argument('model', nargs=1, default=DEFAULT_SUMMARIZATION_MODEL)
 @click.option('--language', default="ru")
 @click.option('--prompt-file', type=click.Path(exists=True), help='Path to a file containing the prompt')
 @click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')

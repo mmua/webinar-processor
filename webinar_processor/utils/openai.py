@@ -21,15 +21,16 @@ spacy_models = {
 
 DEFAULT_LONG_CONTEXT_MODEL = "gpt-4o"
 
+
 @retry(wait=wait_random_exponential(multiplier=1, min=30, max=120), stop=stop_after_attempt(7))
-def get_completion(prompt, model="gpt-3.5-turbo-16k"):
+def get_completion(prompt, model="gpt-4o-mini"):
     messages = [{"role": "user", "content": prompt}]
-    response = openai.ChatCompletion.create(
+    response = openai.chat.completions.create(
         model=model,
         messages=messages,
-        temperature=0, # this is the degree of randomness of the model's output
+        temperature=0,  # this is the degree of randomness of the model's output
     )
-    return response.choices[0].message["content"]
+    return response.choices[0].message.content
 
 
 def get_token_limit_summary(model: str) -> int:
@@ -38,6 +39,7 @@ def get_token_limit_summary(model: str) -> int:
         'gpt-4': 3000,
         'gpt-4-1106-preview': 100000,
         'gpt-4o': 100000,
+        'gpt-4o-mini': 100000,
         'gpt-4-turbo-preview': 100000
     }
     return token_limit.get(model, 2500)
@@ -47,8 +49,8 @@ def get_token_limit_story(model: str) -> int:
     token_limit = {
         'gpt-3.5-turbo-16k': 4000,
         'gpt-4': 4000,
-        'gpt-4-1106-preview': 4000,
-        'gpt-4o': 4000,
+        'gpt-4o': 8000,
+        'gpt-4o-mini': 8000,
         'gpt-4-turbo-preview': 4000
     }
     return token_limit.get(model, 2000)
@@ -83,7 +85,7 @@ def split_text_to_sentences(text: str, language: str = "ru", max_sent_len: int =
 
 def count_tokens(model: str, text: str):
     try:
-        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        encoding = tiktoken.encoding_for_model(model)
     except KeyError as e:
         raise RuntimeError(f"Invalid model: {model}") from e
     tokens = encoding.encode(text)
@@ -137,10 +139,11 @@ def create_summary(text: str, language: str, model: str, prompt: str) -> str:
         try:
             request = prompt.format(resume=resume, text=segment)
             resume = get_completion(request, model)
-        except openai.error.InvalidRequestError as e:
+        except openai.APIError as e:
+            # Handle API error here, e.g. retry or log
+            print(f"OpenAI API returned an API Error: {e}")
             raise RuntimeError('Error: OpenAI invalid request') from e
-
-    return resume
+        return resume
 
 
 def create_summary_with_context(text: str, context: str, language: str, model: str, prompt: str) -> str:
@@ -151,7 +154,9 @@ def create_summary_with_context(text: str, context: str, language: str, model: s
         try:
             request = prompt.format(resume=resume, text=segment, context=context)
             resume = get_completion(request, model)
-        except openai.error.InvalidRequestError as e:
+        except openai.APIError as e:
+            # Handle API error here, e.g. retry or log
+            print(f"OpenAI API returned an API Error: {e}")
             raise RuntimeError('Error: OpenAI invalid request') from e
 
     return resume
