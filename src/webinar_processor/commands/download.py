@@ -10,21 +10,26 @@ from pytube import YouTube
 
 @click.command()
 @click.argument('url', nargs=1)
-@click.argument('path', default=None)
-def yt_download(url: str, path: str):
+@click.option('--output-dir', '-o', default=None, help='Output directory for downloaded video')
+def yt_download(url: str, output_dir: str):
     """
     Downloads YouTube video to specified directory
     """
-    yt = YouTube(url)
+    try:
+        yt = YouTube(url)
+    except Exception as e:
+        click.echo("Invalid YouTube URL", err=True)
+        sys.exit(1)
+        
     video_path = yt.streams \
         .filter(progressive=True, file_extension='mp4') \
         .order_by('resolution') \
         .desc() \
         .first() \
-        .download(path)
+        .download(output_dir)
     
     # download poster
-    posters_path = os.path.join(path, "posters")
+    posters_path = os.path.join(output_dir, "posters") if output_dir else "posters"
     if not os.path.exists(posters_path):
         os.makedirs(posters_path)
 
@@ -39,4 +44,4 @@ def yt_download(url: str, path: str):
 
 
 if __name__ == "__main__":
-    yt_download(sys.argv[1], sys.argv[2])
+    yt_download()
