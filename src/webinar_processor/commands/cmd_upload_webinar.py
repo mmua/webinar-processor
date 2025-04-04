@@ -72,4 +72,4 @@ def upload_webinar(video_file, title, slug, poster_file, transcript_file, endpoi
     if response.status_code == 201:
         click.echo(click.style('Webinar successfully uploaded!', fg='green'))
     else:
-        click.echo(click.style(f'Failed to upload the Webinar! Response: {response.text}', fg='red'))
+        click.echo(click.style(f'Failed to upload the Webinar! Response: {response.text}', fg='red')) 

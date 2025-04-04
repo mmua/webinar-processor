@@ -104,4 +104,4 @@ def raw_text(asr_file: click.File, output_file: str):
         with open(output_file, "w", encoding="utf-8") as of:
             of.write(story)
     else:
-        click.echo(story)
+        click.echo(story) 

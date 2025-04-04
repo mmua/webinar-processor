@@ -1,81 +1,72 @@
 import os
-from pkg_resources import resource_filename
+import importlib.resources
+from pathlib import Path
+from typing import Optional
 
-def get_config_path(config_name):
+def get_config_path(config_name: str) -> str:
     """
-    Get the absolute path to a configuration file.
-    
-    First tries the pkg_resources approach for installed packages,
-    falls back to finding the file relative to the project root.
+    Get the absolute path to a configuration file using modern package resource methods.
     
     Args:
         config_name: The name of the configuration file
         
     Returns:
-        The absolute path to the configuration file
+        The absolute path to the configuration file as a string
     """
-    # First try the package resource approach
-    pkg_path = resource_filename('webinar_processor', f'../conf/{config_name}')
-    
-    if os.path.exists(pkg_path):
-        return pkg_path
-    
-    # Fallback: Look for the file in the project root directory
-    # Get the directory of the current file (package.py)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go up to the src/webinar_processor directory
-    package_dir = os.path.dirname(current_dir)
-    # Go up to the src directory
-    src_dir = os.path.dirname(package_dir)
-    # Go up to the project root directory
-    project_root = os.path.dirname(src_dir)
-    # Path to the conf directory in the project root
-    conf_path = os.path.join(project_root, 'conf', config_name)
-    
-    if os.path.exists(conf_path):
-        return conf_path
-    
-    # If all else fails, try relative to current working directory
-    cwd_path = os.path.join(os.getcwd(), 'conf', config_name)
-    if os.path.exists(cwd_path):
-        return cwd_path
-        
-    # Return the original path, even though it might not exist
-    return pkg_path
+    # Try to find the file in the package resources
+    try:
+        # This is for Python 3.9+ using the newer API
+        with importlib.resources.files('webinar_processor').joinpath('resources', 'conf', config_name) as path:
+            if path.exists():
+                return str(path)
+            
+            # If still not found, return the resource path anyway (it might not exist)
+            return str(path)
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        # Fallback for older Python versions using deprecation-free API
+        try:
+            import importlib_resources  # type: ignore
+            with importlib_resources.files('webinar_processor').joinpath('resources', 'conf', config_name) as path:
+                if path.exists():
+                    return str(path)
+                
+                # If still not found, return the resource path anyway (it might not exist)
+                return str(path)
+        except (ImportError, ModuleNotFoundError, AttributeError):
+            # Last resort fallback to current working directory
+            return str(Path(os.getcwd()) / 'conf' / config_name)
 
-def get_model_path(model_name):
+
+def get_model_path(model_name: str) -> str:
     """
-    Get the absolute path to a model file.
-    
-    First tries the pkg_resources approach for installed packages,
-    falls back to finding the file relative to the project root.
+    Get the absolute path to a model file using modern package resource methods.
     
     Args:
         model_name: The name of the model file
         
     Returns:
-        The absolute path to the model file
+        The absolute path to the model file as a string
     """
-    # First try the package resource approach
-    pkg_path = resource_filename('webinar_processor', f'../models/{model_name}')
-    
-    if os.path.exists(pkg_path):
-        return pkg_path
-    
-    # Fallback: Look for the file in the project root directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    package_dir = os.path.dirname(current_dir)
-    src_dir = os.path.dirname(package_dir)
-    project_root = os.path.dirname(src_dir)
-    models_path = os.path.join(project_root, 'models', model_name)
-    
-    if os.path.exists(models_path):
-        return models_path
-    
-    # If all else fails, try relative to current working directory
-    cwd_path = os.path.join(os.getcwd(), 'models', model_name)
-    if os.path.exists(cwd_path):
-        return cwd_path
-        
-    # Return the original path, even though it might not exist
-    return pkg_path
+    # Try to find the file in the package resources
+    try:
+        # This is for Python 3.9+ using the newer API
+        with importlib.resources.files('webinar_processor').joinpath('resources', 'models', model_name) as path:
+            if path.exists():
+                return str(path)
+            
+            # If still not found, return the resource path anyway (it might not exist)
+            return str(path)
+            
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        # Fallback for older Python versions using deprecation-free API
+        try:
+            import importlib_resources  # type: ignore
+            with importlib_resources.files('webinar_processor').joinpath('resources', 'models', model_name) as path:
+                if path.exists():
+                    return str(path)
+                                
+                # If still not found, return the resource path anyway (it might not exist)
+                return str(path)
+        except (ImportError, ModuleNotFoundError, AttributeError):
+            # Last resort fallback to current working directory
+            return str(Path(os.getcwd()) / 'models' / model_name)

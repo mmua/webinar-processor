@@ -31,7 +31,8 @@ dependencies = [
     "spacy==3.6.1",
     "opencv-python==4.8.1.78",
     "moviepy==1.0.3",
-    "tenacity==8.2.3"
+    "tenacity==8.2.3",
+    "importlib-resources>=5.0.0; python_version < '3.9'"  # For Python 3.8 compatibility
 ]
 
 [project.urls]
@@ -49,5 +50,12 @@ package-dir = {"" = "src"}
 where = ["src"]
 include = ["webinar_processor", "webinar_processor.*"]
 
+# Updated package data definitions for modern resource handling
 [tool.setuptools.package-data]
-webinar_processor = ["../conf/*", "../models/*"] 
+"webinar_processor.resources.conf" = ["*.txt", "*.yaml"]
+"webinar_processor.resources.models" = ["*"]
+
+# Include non-Python files in the package
+[tool.setuptools.data-files]
+"conf" = ["conf/*"]
+"models" = ["models/*"] 

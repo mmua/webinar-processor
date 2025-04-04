@@ -1,4 +1,3 @@
-
 import os
 import tempfile
 from typing import Dict, List
@@ -116,4 +115,4 @@ def diarize(webinar_path: str, transcript_path: str):
             serialized_result = json.dumps(result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)
 
-        return asr_result, result
+        return asr_result, result 

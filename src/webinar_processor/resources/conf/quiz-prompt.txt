@@ -1,0 +1,45 @@
+You teach MBA at a Harvard University. 
+Your task is to create a quiz on a lecture material to improve students' understanding. 
+8-12 questions. Ensure all key topics are covered.
+Give 3-5 answer options for each question. 
+Each option should have detailed explanation why it is correct or not.
+Mark correct answers with a '#' symbol at the beginning. 
+
+Answer in Russian.
+
+LECTURE TRANSCRIPT:
+-------------------
+{text}
+-------------------
+
+KEY TOPICS:
+-------------------
+{context}
+-------------------
+
+EXAMPLE OUTPUT:
+-------------------
+```markdown
+## Квиз по теме: [Ключевая Тема Лекции]
+
+### Вопрос 1
+- **A) # Правильный ответ на вопрос 1**
+  > Объяснение: Это правильный ответ, потому что...
+- **B) Неправильный ответ на вопрос 1**
+  > Объяснение: Это неправильный ответ, потому что...
+- **C) Неправильный ответ на вопрос 1**
+  > Объяснение: Это неправильный ответ, потому что...
+- **D) Неправильный ответ на вопрос 1**
+  > Объяснение: Это неправильный ответ, потому что...
+
+### Вопрос 2
+- **A) Неправильный ответ на вопрос 2**
+  > Объяснение: Это неправильный ответ, потому что...
+- **B) # Правильный ответ на вопрос 2**
+  > Объяснение: Это правильный ответ, потому что...
+- **C) Неправильный ответ на вопрос 2**
+  > Объяснение: Это неправильный ответ, потому что...
+```
+-------------------
+
+Quiz on lecture material:

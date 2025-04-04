@@ -6,7 +6,7 @@ import click
 @click.command()
 @click.argument('tsv_file', type=click.File("r", encoding="utf-8"), nargs=1)
 @click.argument('transcript_path', type=click.Path(exists=False), default='', nargs=1)
-def tsv_to_transcipt(tsv_file: click.File,  transcript_path: str):
+def tsv_to_transcript(tsv_file: click.File,  transcript_path: str):
     """
     Transforms tab separated transcript into transcript and asr file.
 

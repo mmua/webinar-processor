@@ -53,10 +53,10 @@ def test_basic_workflow(mock_youtube, mock_openai, temp_dir):
     runner = CliRunner()
     
     # Mock YouTube download
-    with patch('webinar_processor.commands.download.YouTube', return_value=mock_youtube):
+    with patch('webinar_processor.commands.cmd_yt_download.YouTube', return_value=mock_youtube):
         download_result = runner.invoke(
             cli,
-            ['yt-download', 'https://youtube.com/watch?v=test', '--output-dir', str(temp_dir)]
+            ['download', 'https://youtube.com/watch?v=test', '--output-dir', str(temp_dir)]
         )
         assert download_result.exit_code == 0, "Download command failed"
     

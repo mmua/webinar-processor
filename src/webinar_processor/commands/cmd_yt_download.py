@@ -11,7 +11,7 @@ from pytube import YouTube
 @click.command()
 @click.argument('url', nargs=1)
 @click.option('--output-dir', '-o', default=None, help='Output directory for downloaded video')
-def yt_download(url: str, output_dir: str):
+def download(url: str, output_dir: str):
     """
     Downloads YouTube video to specified directory
     """
@@ -44,4 +44,4 @@ def yt_download(url: str, output_dir: str):
 
 
 if __name__ == "__main__":
-    yt_download()
+    download() 

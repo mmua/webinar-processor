@@ -21,7 +21,7 @@ Each test verifies:
 import pytest
 from unittest.mock import patch
 from click.testing import CliRunner
-from webinar_processor.commands.download import yt_download
+from webinar_processor.commands.cmd_yt_download import download
 
 def test_yt_download_success(mock_youtube, temp_dir):
     """
@@ -36,9 +36,9 @@ def test_yt_download_success(mock_youtube, temp_dir):
     while still verifying the command's behavior.
     """
     runner = CliRunner()
-    with patch('webinar_processor.commands.download.YouTube', return_value=mock_youtube):
+    with patch('webinar_processor.commands.cmd_yt_download.YouTube', return_value=mock_youtube):
         result = runner.invoke(
-            yt_download,
+            download,
             ['https://youtube.com/watch?v=test', '--output-dir', str(temp_dir)]
         )
         assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}"
@@ -58,7 +58,7 @@ def test_yt_download_invalid_url(temp_dir):
     """
     runner = CliRunner()
     result = runner.invoke(
-        yt_download,
+        download,
         ['invalid-url', '--output-dir', str(temp_dir)]
     )
     assert result.exit_code != 0, "Command should fail with invalid URL"

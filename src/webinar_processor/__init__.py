@@ -22,7 +22,7 @@ def cli():
 
 
 # Add commands
-cli.add_command(commands.yt_download)
+cli.add_command(commands.download)
 cli.add_command(commands.transcribe)
 cli.add_command(commands.diarize)
 cli.add_command(commands.poster)
@@ -36,4 +36,4 @@ cli.add_command(commands.text_transform)
 cli.add_command(commands.summarize_with_context)
 cli.add_command(commands.upload_quiz)
 cli.add_command(commands.quiz)
-cli.add_command(commands.tsv_to_transcipt)
+cli.add_command(commands.tsv_to_transcript)
