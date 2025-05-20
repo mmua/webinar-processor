@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webinar_processor"
-version = "0.10.0"
+version = "0.11.0"
 description = "HSE Organization & Project Management Webinar Processor"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -21,10 +21,10 @@ dependencies = [
     "numpy>=1.24.0,<2.0.0",  # Pinned to NumPy 1.x for compatibility
     "pytube==15.0.0",
     "Click==8.1.7",
-    "pyannote.audio==3.1.1",
+    "pyannote.audio==3.3.2",
     "openai-whisper==20240930",
     "python_speech_features==0.6.0",
-    "speechbrain==1.0.1",
+    "speechbrain==1.0.3",
     "python-dotenv==1.0.0",
     "requests==2.31.0",
     "openai==1.70.0",

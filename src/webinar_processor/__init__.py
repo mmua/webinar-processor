@@ -10,7 +10,7 @@ from webinar_processor import commands
 
 __author__ = """Maxim Moroz"""
 __email__ = 'mimoroz@edu.hse.ru'
-__version__ = '0.2.0'
+__version__ = '0.9.0'
 
 
 _ = load_dotenv(find_dotenv())

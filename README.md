@@ -213,3 +213,54 @@ sudo apt install -y python3-venv ffmpeg
 python -m spacy download en_core_web_sm
 python -m spacy download en_core_web_md
 python -m spacy download ru_core_news_md
+
+
+## Refactoring
+
+high-ROI refactoring opportunities:
+
+### 1. Command Naming Consistency
+- Some commands use cmd_ prefix (cmd_quiz.py, cmd_topics.py) while others don't (transcribe.py, download.py)
+- High ROI because it improves maintainability and makes the codebase more predictable
+- Suggestion: Standardize on either using or not using the cmd_ prefix
+
+### 2. Configuration Management
+- Currently using .env for configuration but could benefit from a more structured approach
+- Consider introducing a dedicated config module with:
+- Default configurations
+- Environment-specific overrides
+- Type validation for config values
+- High ROI because it reduces runtime errors and makes configuration more maintainable
+
+### 3. Error Handling and Logging
+- Looking at the command files, there's opportunity to implement consistent error handling
+- Add structured logging throughout the application
+- High ROI because it makes debugging and monitoring much easier
+
+### 4. Testing Infrastructure
+- I notice a `tests` directory but would need to examine its contents
+- Consider adding:
+    - Unit test fixtures
+    - Integration tests for commands
+    - Mock responses for external services (OpenAI, etc.)
+- High ROI because it ensures reliability and makes future changes safer
+
+### 5. Dependencies Isolation
+- The OpenAI and other external service integrations could be better isolated
+- Consider implementing a service layer pattern
+- High ROI because it makes the codebase more maintainable and easier to update when APIs change
+
+### 6. Command Pattern Standardization
+- Looking at various command files, there's opportunity to standardize their structure
+- Consider introducing a base command class with common functionality
+- High ROI because it reduces code duplication and makes adding new commands easier
+
+### 7. Type Hints and Documentation
+- Add type hints throughout the codebase
+- Improve function and class documentation
+- High ROI because it improves code maintainability and helps catch errors early
+
+### 8. Utils Module Organization
+- The utils directory could be better organized by functionality
+- Consider breaking it into more specific modules (e.g., io, text, media)
+- High ROI because it makes the codebase more navigable
