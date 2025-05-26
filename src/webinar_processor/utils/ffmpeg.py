@@ -1,6 +1,24 @@
 import shutil
 import subprocess
 from typing import List
+import os
+
+def get_wav_filename(input_path: str, output_dir: str) -> str:
+    """
+    Generate a WAV filename from an input audio/video file path.
+    
+    Args:
+        input_path: Path to the input audio/video file
+        output_dir: Directory where the WAV file should be placed
+        
+    Returns:
+        Path to the output WAV file
+    """
+    # Get the base filename without extension
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    # Create the WAV filename
+    wav_filename = f"{base_name}.wav"
+    return os.path.join(output_dir, wav_filename)
 
 def convert_mp4_to_wav(input_path: str, output_path: str, sample_rate: int = 16000):
     cmd = [

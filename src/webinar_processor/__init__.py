@@ -6,6 +6,7 @@ import click
 from dotenv import find_dotenv, load_dotenv
 
 from webinar_processor import commands
+from .commands import download, transcribe, diarize, poster, detect_gender, upload_webinar, summarize, storytell, raw_text, topics, text_transform, summarize_with_context, upload_quiz, quiz, tsv_to_transcript, speakers
 
 
 __author__ = """Maxim Moroz"""
@@ -37,3 +38,4 @@ cli.add_command(commands.summarize_with_context)
 cli.add_command(commands.upload_quiz)
 cli.add_command(commands.quiz)
 cli.add_command(commands.tsv_to_transcript)
+cli.add_command(commands.speakers)
