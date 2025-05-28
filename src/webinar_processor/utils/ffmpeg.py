@@ -77,3 +77,28 @@ def mp4_silence_remove(input_path: str, output_path: str):
         final_clip.write_videofile(output_path)
     else:
         shutil.copyfile(input_path, output_path)
+
+def wav_silence_remove(input_path: str, output_path: str, min_silence_len: int = 500, silence_thresh: int = -40):
+    """
+    Remove silence from a wav file and save the result.
+    Args:
+        input_path: Path to the input wav file.
+        output_path: Path to save the output wav file.
+        min_silence_len: Minimum length of silence to detect (in ms).
+        silence_thresh: Silence threshold in dBFS.
+    """
+    from pydub import AudioSegment, silence
+    import shutil
+
+    audio = AudioSegment.from_wav(input_path)
+    # Detect non-silent intervals (returns list of [start, end] in ms)
+    nonsilent_ranges = silence.detect_nonsilent(audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh)
+
+    if nonsilent_ranges:
+        # Concatenate non-silent segments
+        non_silent_audio = AudioSegment.empty()
+        for start, end in nonsilent_ranges:
+            non_silent_audio += audio[start:end]
+        non_silent_audio.export(output_path, format="wav")
+    else:
+        shutil.copyfile(input_path, output_path)
