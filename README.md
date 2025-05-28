@@ -1,15 +1,96 @@
 # Webinar Processor
 
-I want to create webinar processing pipeline in python.
-Functions are:
-* Download video from youtube
-* Create video subtitles with openai whisper
-* perform speaker diarization 
-* speaker detection - detect known speakers
-* for undetected speakers detect gender and generate mascot appropriately
-* Create streaming video player with subtitles below video syncronized with video location - when clicked on text video starts playing from linked location
-* Create video content summary in text form
-* detect slides in video and insert them into subtitles
+This project provides tools to process webinar recordings, including transcription, speaker diarization, and speaker identification.
+
+## Features
+
+*   Download video from YouTube.
+*   Transcribe audio/video files (e.g., using OpenAI Whisper) to create subtitles.
+*   Perform speaker diarization to identify who spoke when.
+*   Identify known speakers using voice embeddings and a speaker database.
+*   For unknown speakers, detect gender and potentially generate a representative mascot/avatar.
+*   Create a streaming video player with synchronized subtitles (clicking on text navigates video).
+*   Generate a text summary of the video content.
+*   Detect slides within the video and integrate them into the subtitles/transcript.
+*   A speaker database to manage known speaker profiles.
+
+## Voice Embedding Standard
+
+For consistent speaker identification and matching, this project adheres to a specific voice embedding standard:
+
+*   **Model**: `speechbrain/spkrec-ecapa-voxceleb`
+*   **Dimension**: 192
+*   **Data Type**: `numpy.float32`
+
+All voice embeddings stored in the speaker database and used for comparison are expected to conform to this standard. The `VoiceEmbeddingService` is responsible for generating these embeddings, and the `SpeakerDatabase` service ensures they are stored and retrieved in this format.
+
+## Setup
+
+To set up the project, follow these steps:
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd webinar-processor
+    ```
+2.  **Create a virtual environment:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt 
+    # Or, if you use Poetry or another dependency manager, add respective commands.
+    ```
+4.  **Set up any required API keys or configurations:**
+    Create a `.env` file based on `.env.example` (if available) and fill in necessary credentials for services like OpenAI, AWS, etc.
+
+## Usage
+
+This project provides a Command Line Interface (CLI) for its various functionalities. Below are some examples. For a full list of commands and their options, use the `--help` flag with each command (e.g., `webinar_processor yt-download --help`).
+
+See the "Работа с webinar_processor" section further down for specific command examples.
+
+## Project Structure
+
+A typical project structure might look like this:
+
+```
+webinar-processor/
+├── webinar_processor/    # Main application package
+│   ├── commands/         # CLI command modules
+│   ├── services/         # Core services (transcription, diarization, etc.)
+│   ├── utils/            # Utility functions
+│   └── main.py           # Main CLI entry point (e.g., using Typer or Click)
+├── tests/                # Test suite
+├── data/                 # For storing input/output data, models, etc.
+│   ├── audio/
+│   ├── video/
+│   └── speaker_database/
+├── conf/                 # Configuration files, prompts
+├── docs/                 # Project documentation
+├── scripts/              # Helper scripts (e.g., for setup, deployment)
+├── .env.example          # Example environment variables file
+├── .gitignore
+├── LICENSE
+├── README.md
+└── requirements.txt      # Python package dependencies
+```
+
+## Contributing
+
+Contributions are welcome! If you'd like to contribute, please follow these general guidelines:
+
+1.  **Fork the repository.**
+2.  **Create a new branch** for your feature or bug fix: `git checkout -b feature/your-feature-name` or `git checkout -b fix/your-bug-fix`.
+3.  **Make your changes.** Ensure your code adheres to the project's coding style (e.g., use a linter like Flake8 or Pylint, and a formatter like Black or Ruff).
+4.  **Write tests** for your changes. Ensure all tests pass.
+5.  **Commit your changes** with a clear and descriptive commit message.
+6.  **Push your branch** to your fork: `git push origin feature/your-feature-name`.
+7.  **Create a Pull Request** to the main repository.
+
+If you're planning a larger contribution, it's a good idea to open an issue first to discuss your ideas.
 
 ## Введение
 За основу взят пост https://vas3k.club/post/18916/#2-Ustanavlivaem-bibliot
