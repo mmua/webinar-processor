@@ -52,12 +52,9 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
 
 def transcribe_wav(wav_filename: str, language="ru"):
     import whisper
-    prompts = {
-         "ru": "Добрый день, это вебинар по управлению организациями и проектами.",
-         "en": "Hello, this is project managment webinar. Stay tuned."
-    }
+
     model = whisper.load_model("large-v3")
-    asr_result = model.transcribe(wav_filename, language=language, initial_prompt=prompts[language])
+    asr_result = model.transcribe(wav_filename, language=language)
     return asr_result
 
 
@@ -76,7 +73,13 @@ def transcribe(webinar_path: str, transcript_path: str, language: str):
     # trim video 
     output_file, ext = os.path.splitext(webinar_path)
     output_name = output_file + ".stripped" + ext
-    mp4_silence_remove(webinar_path, output_name)
+    # If the input is a wav file, skip silence removal (moviepy can't process wav)
+    if os.path.splitext(webinar_path)[1].lower() == ".wav":
+        # Even if the input is a wav file, it may contain silence at the beginning,
+        # which can cause Whisper to behave strangely. So, we should still remove silence.
+        output_name = webinar_path  # TODO: Optionally implement silence removal for wav files as well.
+    else:
+        mp4_silence_remove(webinar_path, output_name)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         wav_filename = get_wav_filename(output_name, tmpdir)
