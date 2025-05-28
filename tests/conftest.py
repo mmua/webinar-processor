@@ -110,9 +110,3 @@ def sample_transcript():
         {"start": 0.0, "end": 2.0, "text": "Hello, this is a test."},
         {"start": 2.0, "end": 4.0, "text": "This is another test."}
     ]
-
-@pytest.fixture(autouse=True)
-def mock_external_deps(mock_sbert_punc):
-    """Automatically mock external dependencies for all tests."""
-    with patch('webinar_processor.utils.openai.IdentityPuncCase', return_value=mock_sbert_punc):
-        yield
