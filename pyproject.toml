@@ -32,7 +32,9 @@ dependencies = [
     "opencv-python==4.8.1.78",
     "moviepy==1.0.3",
     "tenacity==8.2.3",
-    "importlib-resources>=5.0.0; python_version < '3.9'"  # For Python 3.8 compatibility
+    "importlib-resources>=5.0.0; python_version < '3.9'",  # For Python 3.8 compatibility
+    "sbert_punc_case_ru @ git+https://huggingface.co/kontur-ai/sbert_punc_case_ru",
+    "pyannote-whisper @ git+https://github.com/mmua/pyannote-whisper"
 ]
 
 [project.urls]
