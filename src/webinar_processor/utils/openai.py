@@ -10,29 +10,17 @@ from tenacity import (
     wait_random_exponential,
 )  # for exponential backoff
 
-class IdentityPuncCase:
-    """Fallback punctuation model that returns text unchanged."""
-    def punctuate(self, text: str) -> str:
-        return text
-
-try:
-    from sbert_punc_case_ru import SbertPuncCase
-    sbert_punc_model = SbertPuncCase()
-except ImportError:
-    # Use identity model for testing and when sbert_punc_case_ru is not available
-    sbert_punc_model = IdentityPuncCase()
-
-# Load models once and reuse them
+# Initialize with None, models will be loaded on demand
 spacy_models = {
-    "ru": spacy.load("ru_core_news_md"),
-    "en": spacy.load("en_core_web_md")
+    "ru": None,
+    "en": None
 }
 
-DEFAULT_LONG_CONTEXT_MODEL = "gpt-4o"
+DEFAULT_LONG_CONTEXT_MODEL = "gpt-4.1"
 
 
 @retry(wait=wait_random_exponential(multiplier=1, min=30, max=120), stop=stop_after_attempt(7))
-def get_completion(prompt, model="gpt-4o-mini"):
+def get_completion(prompt, model=DEFAULT_LONG_CONTEXT_MODEL):
     """
     Get completion from OpenAI API with the given prompt and model.
         
@@ -76,35 +64,92 @@ def get_completion(prompt, model="gpt-4o-mini"):
 
 def get_token_limit_summary(model: str) -> int:
     token_limit = {
-        'gpt-3.5-turbo-16k': 8000,
-        'gpt-4': 3000,
-        'gpt-4-1106-preview': 100000,
-        'gpt-4o': 100000,
-        'gpt-4o-mini': 100000,
-        'gpt-4-turbo-preview': 100000
+        'gpt-4.1': 1047576,           # New series, 1M context
+        'gpt-4.1-mini': 1047576,      # New series, 1M context
+        'gpt-4.1-nano': 1047576,      # New series, 1M context
+        'gpt-4o': 128000,             # Latest gen omni model, 128k context
+        'gpt-4o-mini': 128000,        # Fast/cost-effective omni, 128k context
+        'gpt-4-turbo': 128000,        # Previous generation turbo
+        'gpt-3.5-turbo-0125': 16000,  # Stable 3.5 Turbo (16k context variant)
     }
-    return token_limit.get(model, 2500)
+    # Application-imposed limit, also respecting max output tokens
+    # Max output for gpt-4.1 series is 32768
+    # Max output for gpt-4o-mini is 16384 (approx 16.4k)
+    # Max output for gpt-4o (standard) can vary, let's assume 32768 for safety like Turbo
+    app_limit = {
+        'gpt-4.1': 32768,
+        'gpt-4.1-mini': 32768,
+        'gpt-4.1-nano': 32768, # Nano might be for shorter, but it *can* output 32k
+        'gpt-4o': 32768,       # Assuming similar max output to Turbo models
+        'gpt-4o-mini': 16384,
+        'gpt-4-turbo': 32768,  # Max output for turbo models often cited as 4096, but previews go higher. Using 32k as a general large cap.
+        'gpt-3.5-turbo-0125': 4096, # Common max output for 3.5 series
+    }
+    # Ensure the app_limit doesn't exceed the model's own max output capability if known,
+    # and then use the smaller of the model's context or the app_limit.
+    # For gpt-4.1 series, app_limit IS the max output.
+    # For gpt-4o series, it's also guided by their typical max output.
+    
+    model_context = token_limit.get(model, 8000) # Default to a safe low context if model unknown
+    chosen_app_limit = app_limit.get(model, 4096) # Default to a safe low app_limit
+
+    return min(model_context, chosen_app_limit)
 
 
 def get_token_limit_story(model: str) -> int:
     token_limit = {
-        'gpt-3.5-turbo-16k': 4000,
-        'gpt-4': 4000,
-        'gpt-4o': 8000,
-        'gpt-4o-mini': 8000,
-        'gpt-4-turbo-preview': 4000
+        'gpt-4.1': 1047576,
+        'gpt-4.1-mini': 1047576,
+        'gpt-4.1-nano': 1047576,
+        'gpt-4o': 128000,
+        'gpt-4o-mini': 128000,
+        'gpt-4-turbo': 128000,
+        'gpt-3.5-turbo-0125': 16000,
     }
-    return token_limit.get(model, 2000)
+    # For story generation, we can allow up to the max output tokens for relevant models
+    app_limit = {
+        'gpt-4.1': 32768,
+        'gpt-4.1-mini': 32768,
+        'gpt-4.1-nano': 32768, 
+        'gpt-4o': 32768,
+        'gpt-4o-mini': 16384,
+        'gpt-4-turbo': 32768, 
+        'gpt-3.5-turbo-0125': 4096,
+    }
+    model_context = token_limit.get(model, 4000)
+    chosen_app_limit = app_limit.get(model, 4096)
+    
+    return min(model_context, chosen_app_limit)
 
 
-def sber_text_punctuate(text: str) -> str:
+def sbert_text_punctuate(text: str) -> str:
+    from sbert_punc_case_ru import SbertPuncCase
+    sbert_punc_model = SbertPuncCase()
+
     return sbert_punc_model.punctuate(text)
 
 
 def spacy_split_sentences(text: str, language: str = "ru") -> List[str]:
     nlp = spacy_models.get(language)
-    if not nlp:
-        raise ValueError(f"Unsupported language: {language}")
+    if nlp is None:
+        try:
+            if language == "ru":
+                nlp = spacy.load("ru_core_news_md")
+                spacy_models["ru"] = nlp
+            elif language == "en":
+                nlp = spacy.load("en_core_web_md")
+                spacy_models["en"] = nlp
+            else:
+                raise ValueError(f"Unsupported language for spaCy model loading: {language}")
+        except OSError as e:
+            raise OSError(
+                f"Could not load spaCy model for language '{language}'. "
+                f"Please download it (e.g., python -m spacy download {language}_core_news_md). "
+                f"Original error: {e}"
+            ) from e
+            
+    if not nlp: # Should not happen if logic above is correct, but as a safeguard
+        raise ValueError(f"Unsupported language or model not loaded: {language}")
 
     doc = nlp(text)
     return [str(sent) for sent in doc.sents]
@@ -116,7 +161,7 @@ def split_text_to_sentences(text: str, language: str = "ru", max_sent_len: int =
 
     for s in sents:
         if len(s) > max_sent_len:
-            s = sber_text_punctuate(s)
+            s = sbert_text_punctuate(s)
             result.extend(spacy_split_sentences(s, language))
         else:
             result.append(s)
