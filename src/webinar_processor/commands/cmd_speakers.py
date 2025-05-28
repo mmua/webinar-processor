@@ -145,11 +145,7 @@ def relabel(transcript_path: str, audio_path: str, threshold: float, min_duratio
                 new_id = f"SPEAKER_{len(existing_speakers) + new_speaker_count:02d}"
                 success = db.add_speaker(
                     speaker_id=new_id,
-                    embedding=embedding,
-                    metadata={
-                        'source_transcript': transcript_path,
-                        'original_id': temp_id
-                    }
+                    voice_embedding=embedding
                 )
                 if success:
                     speaker_mappings[temp_id] = new_id
