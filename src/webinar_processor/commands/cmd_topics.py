@@ -10,7 +10,7 @@ _ = load_dotenv(find_dotenv())
 
 @click.command()
 @click.argument('text_file', type=click.File("r", encoding="utf-8"), nargs=1)
-@click.argument('intermediate_model', nargs=1, default="gpt-4o-mini")
+@click.argument('intermediate_model', nargs=1, default="gpt-4.1-mini")
 @click.argument('final_model', nargs=1, default=DEFAULT_LONG_CONTEXT_MODEL)
 @click.option('--language', default="ru")
 @click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')

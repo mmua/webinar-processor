@@ -8,7 +8,7 @@ _ = load_dotenv(find_dotenv())
 @click.command()
 @click.argument('text_file', type=click.File("r", encoding="utf-8"), nargs=1)
 @click.argument('prompt_file', type=click.File("r", encoding="utf-8"), nargs=1)
-@click.argument('model', nargs=1, default="gpt-4o-mini")
+@click.argument('model', nargs=1, default="gpt-4.1-mini")
 @click.option('--language', default="ru")
 @click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')
 def text_transform(text_file: click.File, prompt_file: click.File, model: str, language: str, output_path: str):
@@ -23,7 +23,7 @@ def text_transform(text_file: click.File, prompt_file: click.File, model: str, l
         text_file: A file object representing the text to be transformed. The file should be in UTF-8 encoding.
         prompt_file: A file object containing the prompt template to be used in text transformation. The file 
                      should be in UTF-8 encoding.
-        model: The name of the AI model to be used for the transformation. Defaults to "gpt-4o-mini".
+        model: The name of the AI model to be used for the transformation. Defaults to "gpt-4.1-mini".
         language: The language code (e.g., 'ru' for Russian) to specify the language of the text and prompt. 
                   Defaults to Russian ('ru').
         output_file: Optional. A file path where the transformed text will be written. If not provided, the 
