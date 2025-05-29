@@ -34,25 +34,29 @@ def get_non_silence_intervals(input_path: str) -> List[float]:
     import subprocess
     import moviepy.editor as mpy
     
-    # Use ffmpeg to detect silence
-    command = ["ffmpeg", "-i",input_path, "-af", "silencedetect=noise=-30dB:d=5", "-nostats", "-f", "null", "-"]
-    output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+    # Use ffmpeg to detect silence with less aggressive parameters
+    command = ["ffmpeg", "-i", input_path, "-af", "silencedetect=noise=-35dB:d=3", "-nostats", "-f", "null", "-"]
+    try:
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+    except subprocess.CalledProcessError as e:
+        print(f"FFmpeg error: {e}")
+        return None
 
-    # Parse the output to get silence start and end times
-    pattern = r"silence_(start|end): (\d+(\.\d+)?)"
+    # Parse silence times (handles scientific notation like -2.26757e-05)
+    pattern = r"silence_(start|end): ([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)"
     matches = re.findall(pattern, output)
-    times = [float(time) for _, time, _ in matches]
+    times = [float(time) for _, time in matches]
     
     if not times: # no long silence intervals
         return None
 
     # If the video starts with silence, start from the end of silence
-    if times[0] == 0:
+    if times[0] <= 0:
         times.pop(0)
     else: # start from beginning
         times.insert(0, 0) 
 
-    # If the video doesn't end with silence, end at the last frame
+    # If the video doesn't end with silence, end it at the last frame
     if len(times) % 2 != 0:
         clip = mpy.VideoFileClip(input_path)
         if times[-1] + 5 < clip.duration:
