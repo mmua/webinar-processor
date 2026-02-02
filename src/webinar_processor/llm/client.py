@@ -11,7 +11,10 @@ class LLMClient:
     
     def __init__(self):
         LLMConfig.validate()
-        self.client = openai.OpenAI(api_key=LLMConfig.api_key, base_url=LLMConfig.base_url)
+        self.client = openai.OpenAI(
+            api_key=LLMConfig.get_api_key(),
+            base_url=LLMConfig.get_base_url()
+        )
     
     def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 100, temperature: float = 0.3) -> Optional[str]:
         if model is None:
