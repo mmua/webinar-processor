@@ -16,7 +16,7 @@ spacy_models = {
     "en": None
 }
 
-DEFAULT_LONG_CONTEXT_MODEL = "gpt-4.1"
+DEFAULT_LONG_CONTEXT_MODEL = "gpt-5.2"
 
 
 @retry(wait=wait_random_exponential(multiplier=1, min=30, max=120), stop=stop_after_attempt(7))
@@ -173,7 +173,7 @@ def count_tokens(model: str, text: str):
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError as e:
-        raise RuntimeError(f"Invalid model: {model}") from e
+        encoding = tiktoken.encoding_for_model("gpt-4o")
     tokens = encoding.encode(text)
     return len(tokens)
 
