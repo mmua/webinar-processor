@@ -21,6 +21,8 @@ dependencies = [
     "numpy>=1.24.0,<2.0.0",  # Pinned to NumPy 1.x for compatibility
     "pytube==15.0.0",
     "Click==8.1.7",
+    "torch==2.2.2",
+    "torchaudio==2.2.2",
     "pyannote.audio==3.3.2",
     "openai-whisper==20240930",
     "python_speech_features==0.6.0",
