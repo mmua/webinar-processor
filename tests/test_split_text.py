@@ -1,8 +1,36 @@
+"""
+Text Splitting Tests
+==================
+
+This module contains tests for text splitting and processing utilities.
+
+Test Verification Strategy
+-------------------------
+- Verify correct splitting of text into sentences
+- Test with simple cases and more complex realistic examples
+- Ensure robust handling of various punctuation and formatting
+- Verify the function can handle long, complex text without issues
+
+Each test function verifies:
+- Correct identification of sentence boundaries
+- Preservation of original text content
+- Proper handling of special cases and punctuation
+- Error-free processing of long or complex inputs
+"""
+
 import pytest
 from webinar_processor.utils.openai import split_text_to_sentences
 
 
 def test_split_text_to_sentences():
+    """
+    Test basic sentence splitting functionality.
+    
+    Verification:
+    1. Text should be correctly split at sentence boundaries
+    2. Resulting list should contain expected sentences
+    3. Original punctuation and content should be preserved
+    """
     text = ("Это первый пример. "
             "Вот второй пример, который длиннее и содержит больше слов. "
             "А вот и третий пример.")
@@ -19,6 +47,18 @@ def test_split_text_to_sentences():
 
 
 def test_split_text_to_sentences_long_text():
+    """
+    Test sentence splitting with lengthy transcription-like text.
+    
+    Verification:
+    1. Function should process long text without errors
+    2. Result should be a list of string segments
+    3. Each segment should be a valid string
+    4. The text should be meaningfully split into multiple parts
+    
+    This test uses realistic speech-to-text output to ensure the function
+    can handle the types of text encountered in real webinar transcriptions.
+    """
     text = ("control или shift command на маке shift command и стрелочку вниз shift command вниз видите у меня "
             "выделился только один столбец но весь первый столбец но весь а поскольку у меня теперь выделение на всем "
             "столбце присутствует я нажимаю также зажав shift control или shift command нажимая клавишу вправо и у меня "

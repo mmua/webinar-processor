@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "webinar_processor"
+version = "0.12.0"
+description = "HSE Organization & Project Management Webinar Processor"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Maxim Moroz", email = "mimoroz@edu.hse.ru"}
+]
+keywords = ["webinar_processor"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.8",
+]
+dependencies = [
+    "numpy>=1.24.0,<2.0.0",  # Pinned to NumPy 1.x for compatibility
+    "pytube==15.0.0",
+    "Click==8.1.7",
+    "pyannote.audio==3.3.2",
+    "openai-whisper==20240930",
+    "python_speech_features==0.6.0",
+    "speechbrain==1.0.3",
+    "python-dotenv==1.0.0",
+    "requests==2.31.0",
+    "openai==1.70.0",
+    "spacy>=3.8.6",
+    "opencv-python==4.8.1.78",
+    "moviepy==1.0.3",
+    "tenacity==8.2.3",
+    "importlib-resources>=5.0.0; python_version < '3.9'",  # For Python 3.8 compatibility
+    "sbert_punc_case_ru @ git+https://huggingface.co/kontur-ai/sbert_punc_case_ru",
+    "pyannote-whisper @ git+https://github.com/mmua/pyannote-whisper"
+]
+
+[project.urls]
+Homepage = "https://github.com/mmua/webinar-processor"
+
+[project.scripts]
+webinar_processor = "webinar_processor:cli"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["webinar_processor", "webinar_processor.*"]
+
+# Updated package data definitions for modern resource handling
+[tool.setuptools.package-data]
+"webinar_processor.resources.conf" = ["*.txt", "*.yaml"]
+"webinar_processor.resources.models" = ["*"]
+
+# Include non-Python files in the package
+[tool.setuptools.data-files]
+"conf" = ["conf/*"]
+"models" = ["models/*"] 
