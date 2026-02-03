@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Tuple
 import os
 from webinar_processor.services.speaker_database import SpeakerDatabase
 from webinar_processor.services.voice_embedding_service import VoiceEmbeddingService
-from webinar_processor.services.llm_service import LLMService
+from webinar_processor.llm import LLMClient
 
 @click.group()
 def speakers():
@@ -58,7 +58,7 @@ def info(speaker_id: str):
     else:
         click.echo(f"Speaker {speaker_id} not found")
 
-def detect_self_introductions(transcript: List[Dict], llm_service: LLMService) -> Dict[str, str]:
+def detect_self_introductions(transcript: List[Dict], llm_client: LLMClient) -> Dict[str, str]:
     """
     Detect self-introductions in the transcript and extract speaker names.
     Returns a mapping of speaker IDs to inferred names.
@@ -79,7 +79,7 @@ def detect_self_introductions(transcript: List[Dict], llm_service: LLMService) -
         text = " ".join(seg['text'] for seg in segments[:10])
         
         # Use LLM to extract speaker name
-        name = llm_service.extract_speaker_name(text)
+        name = llm_client.extract_speaker_name(text)
         if name:
             name_mappings[speaker_id] = name
     
@@ -110,7 +110,7 @@ def relabel(transcript_path: str, audio_path: str, threshold: float, min_duratio
         # Initialize services
         db = SpeakerDatabase()
         voice_service = VoiceEmbeddingService()
-        llm_service = LLMService()
+        llm_client = LLMClient()
         
         # Get all existing speakers from database
         existing_speakers = db.get_all_speakers()
@@ -156,7 +156,7 @@ def relabel(transcript_path: str, audio_path: str, threshold: float, min_duratio
         
         # Detect self-introductions and update speaker names
         click.echo("Detecting self-introductions...")
-        name_mappings = detect_self_introductions(transcript, llm_service)
+        name_mappings = detect_self_introductions(transcript, llm_client)
         
         # Update speaker names in database
         for speaker_id, name in name_mappings.items():

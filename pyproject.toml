@@ -18,18 +18,22 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
 ]
 dependencies = [
-    "numpy>=1.24.0,<2.0.0",  # Pinned to NumPy 1.x for compatibility
+    "numpy==2.2.6",
     "pytube==15.0.0",
     "Click==8.1.7",
-    "pyannote.audio==3.3.2",
+    "torch==2.8.0+cpu",
+    "torchaudio==2.8.0+cpu",
+    "torchvision==0.23.0+cpu",
+    "torchcodec==0.7.0",
+    "pyannote.audio==4.0.3",
     "openai-whisper==20240930",
     "python_speech_features==0.6.0",
     "speechbrain==1.0.3",
     "python-dotenv==1.0.0",
-    "requests==2.31.0",
+    "requests==2.32.5",
     "openai==1.70.0",
-    "spacy>=3.8.6",
-    "opencv-python==4.8.1.78",
+    "spacy==3.8.11",
+    "opencv-python==4.11.0.86",
     "moviepy==1.0.3",
     "tenacity==8.2.3",
     "importlib-resources>=5.0.0; python_version < '3.9'",  # For Python 3.8 compatibility

@@ -24,7 +24,7 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
 
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1",
-        use_auth_token=hf_token
+        token=hf_token
     )
 
     # Сегментация аудио-файла на реплики спикеров. Путь обязательно абсолютный.
