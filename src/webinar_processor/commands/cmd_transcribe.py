@@ -5,8 +5,6 @@ import click
 import json
 
 from webinar_processor.utils.ffmpeg import convert_mp4_to_wav, mp4_silence_remove
-from webinar_processor.utils.gender_detection import GenderDetector
-from webinar_processor.utils.package import get_config_path
 from webinar_processor.utils.path import get_wav_filename
 
 
@@ -14,9 +12,6 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
     from pyannote.audio import Pipeline
     from pyannote_whisper.utils import diarize_text
 
-    # # Указываем путь до файла с конфигом, он должен быть в той же директории, как сказано на шаге 3.
-    # config_path = get_config_path('diarization.yaml')
-    # pipeline = Pipeline.from_pretrained(config_path)
     hf_token = os.getenv("HUGGING_FACE_TOKEN")
     if hf_token is None:
         click.echo(click.style('Error: HuggingFace token is not set', fg='red'))
@@ -93,10 +88,7 @@ def transcribe(webinar_path: str, transcript_path: str, language: str):
             json_file.write(serialized_result)
 
         result = diarize_wav(wav_filename, asr_result)
-        if False:
-            click.echo("Detecting speaker genders...")
-            result = GenderDetector.detect_gender_in_transcript(result, wav_filename)
-        
+
         with open(transcript_path, "w", encoding="utf-8") as json_file:
             serialized_result = json.dumps(result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)
