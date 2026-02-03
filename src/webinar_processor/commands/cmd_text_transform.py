@@ -1,5 +1,6 @@
 import click
 from dotenv import load_dotenv, find_dotenv
+from webinar_processor.llm import LLMError
 from webinar_processor.utils.openai import text_transform as transform
 
 _ = load_dotenv(find_dotenv())
@@ -41,7 +42,12 @@ def text_transform(text_file: click.File, prompt_file: click.File, model: str, l
     text = text_file.read()
     prompt_template = prompt_file.read()
 
-    output = transform(text, language, model, prompt_template)
+    try:
+        output = transform(text, language, model, prompt_template)
+    except LLMError as e:
+        click.echo(click.style(f'Error transforming text: {e}', fg='red'))
+        raise click.Abort()
+
     if output_path:
         with open(output_path, "w", encoding="utf-8") as of:
             of.write(output)

@@ -4,7 +4,10 @@ from typing import Optional, List, Dict, Tuple
 import os
 from webinar_processor.services.speaker_database import SpeakerDatabase
 from webinar_processor.services.voice_embedding_service import VoiceEmbeddingService
-from webinar_processor.llm import LLMClient
+from webinar_processor.llm import LLMClient, LLMError
+
+import logging
+logger = logging.getLogger(__name__)
 
 @click.group()
 def speakers():
@@ -79,9 +82,13 @@ def detect_self_introductions(transcript: List[Dict], llm_client: LLMClient) -> 
         text = " ".join(seg['text'] for seg in segments[:10])
         
         # Use LLM to extract speaker name
-        name = llm_client.extract_speaker_name(text)
-        if name:
-            name_mappings[speaker_id] = name
+        try:
+            name = llm_client.extract_speaker_name(text)
+            if name:
+                name_mappings[speaker_id] = name
+        except LLMError as e:
+            logger.warning(f"Failed to extract name for speaker {speaker_id}: {e}")
+            continue  # Skip this speaker, continue with others
     
     return name_mappings
 

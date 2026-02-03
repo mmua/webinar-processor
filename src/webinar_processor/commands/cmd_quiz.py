@@ -1,7 +1,7 @@
 import os
 import click
 from dotenv import load_dotenv, find_dotenv
-from webinar_processor.llm import LLMConfig
+from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.openai import create_summary_with_context
 from webinar_processor.utils.package import get_config_path
 
@@ -31,7 +31,7 @@ def quiz(text_file: click.File, topics_file: click.File, language: str, output_f
 
     try:
         quiz_md = create_summary_with_context(text, topics, language, model, quiz_prompt)
-    except Exception as e:
+    except LLMError as e:
         click.echo(click.style(f'Error generating quiz: {e}', fg='red'))
         raise click.Abort
 

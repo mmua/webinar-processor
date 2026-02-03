@@ -1,6 +1,6 @@
 import click
 from dotenv import load_dotenv, find_dotenv
-from webinar_processor.llm import LLMConfig
+from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.openai import create_summary_with_context
 
 _ = load_dotenv(find_dotenv())
@@ -21,7 +21,12 @@ def summarize_with_context(text_file: click.File, context_file: click.File, prom
     prompt_template = prompt_file.read()
 
     model = model or LLMConfig.get_model('summarization')
-    output = create_summary_with_context(text, context, language, model, prompt_template)
+
+    try:
+        output = create_summary_with_context(text, context, language, model, prompt_template)
+    except LLMError as e:
+        click.echo(click.style(f'Error generating summary: {e}', fg='red'))
+        raise click.Abort()
 
     if output_path:
         with open(output_path, "w", encoding="utf-8") as of:

@@ -4,7 +4,7 @@ from typing import List
 import click
 from dotenv import load_dotenv, find_dotenv
 
-from webinar_processor.llm import LLMConfig
+from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.package import get_config_path
 from webinar_processor.utils.openai import create_summary_with_context, get_completion, get_output_limit
 
@@ -210,8 +210,8 @@ def process_chunks(chunks: List[dict], prompt_template: str, model: str, languag
 
         try:
             result = get_completion(prompt, model, max_tokens=get_output_limit(model))
-        except Exception as e:
-            click.echo(click.style(f"Chunk {i+1} EXCEPTION: {type(e).__name__}: {e}", fg='red'))
+        except LLMError as e:
+            click.echo(click.style(f"Chunk {i+1} LLM error: {e}", fg='red'))
             raise click.Abort()
 
         if result:
@@ -289,7 +289,7 @@ def summarize(asr_path: str, topics_path: str, model: str, language: str, prompt
 
     try:
         summary = create_summary_with_context(text, context, language, model, prompt_template)
-    except Exception as e:
+    except LLMError as e:
         click.echo(click.style(f'Error: {e}', fg='red'))
         raise click.Abort
 

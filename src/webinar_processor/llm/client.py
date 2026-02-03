@@ -3,6 +3,7 @@ from typing import Optional
 import logging
 
 from .config import LLMConfig
+from .exceptions import LLMError
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +34,8 @@ class LLMClient:
                 return None
             return content.strip()
         except Exception as e:
-            # Make error visible in console, not just logger
-            import click
-            click.echo(click.style(f"LLM EXCEPTION for {model}: {type(e).__name__}: {e}", fg='red'), err=True)
             logger.error(f"LLM error for model {model}: {e}")
-            return None
+            raise LLMError(f"LLM generation failed for model {model}: {e}") from e
     
     def extract_speaker_name(self, text: str) -> Optional[str]:
         prompt = f'Analyze the following text and extract the speaker\'s name if they introduce themselves. Look for patterns like "Hi, I\'m [name]", "My name is [name]", "This is [name]", "[name] here", "I\'m [name]". If no clear self-introduction is found, respond with "None". Only return the name itself, not titles or additional words. Return the name in the same language as the text.\n\nText: "{text}"\n\nName:'

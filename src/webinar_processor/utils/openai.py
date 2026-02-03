@@ -3,7 +3,7 @@ import logging
 import tiktoken
 import spacy
 
-from webinar_processor.llm import LLMClient, LLMConfig
+from webinar_processor.llm import LLMClient, LLMConfig, LLMError, TOKEN_LIMITS, OUTPUT_LIMITS
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 logger = logging.getLogger(__name__)
@@ -11,20 +11,6 @@ logger = logging.getLogger(__name__)
 spacy_models = {"ru": None, "en": None}
 
 _llm_client = None
-
-TOKEN_LIMITS = {
-    'gpt-4.1': 1047576, 'gpt-4.1-mini': 1047576, 'gpt-4.1-nano': 1047576,
-    'gpt-4o': 128000, 'gpt-4o-mini': 128000, 'gpt-4-turbo': 128000,
-    'gpt-3.5-turbo-0125': 16000,
-    'gpt-5.2': 128000, 'gpt-5-mini': 128000,
-}
-
-OUTPUT_LIMITS = {
-    'gpt-4.1': 32768, 'gpt-4.1-mini': 32768, 'gpt-4.1-nano': 32768,
-    'gpt-4o': 32768, 'gpt-4o-mini': 16384, 'gpt-4-turbo': 32768,
-    'gpt-3.5-turbo-0125': 4096,
-    'gpt-5.2': 64000, 'gpt-5-mini': 64000,
-}
 
 def get_output_limit(model: str) -> int:
     return OUTPUT_LIMITS.get(model, 4096)
@@ -45,10 +31,7 @@ def get_completion(prompt, model=None, max_tokens=None):
         model = LLMConfig.get_model('default')
     if max_tokens is None:
         max_tokens = get_output_limit(model)
-    result = client.generate(prompt, model=model, max_tokens=max_tokens)
-    if result is None:
-        raise RuntimeError(f'LLM generation failed for model {model}')
-    return result
+    return client.generate(prompt, model=model, max_tokens=max_tokens)
 
 def get_token_limit_story(model: str) -> int:
     return get_token_limit_summary(model)

@@ -1,7 +1,7 @@
 import os
 import click
 from dotenv import load_dotenv, find_dotenv
-from webinar_processor.llm import LLMConfig
+from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.openai import create_summary, create_summary_with_context
 from webinar_processor.utils.package import get_config_path
 
@@ -31,7 +31,7 @@ def topics(text_file: click.File, language: str, output_file: str):
     click.echo("Extracting topics from transcript...")
     try:
         intermediate_topics = create_summary(text, language, model, intermediate_prompt_template)
-    except Exception as e:
+    except LLMError as e:
         click.echo(click.style(f'Error extracting topics: {e}', fg='red'))
         raise click.Abort
 
@@ -45,7 +45,7 @@ def topics(text_file: click.File, language: str, output_file: str):
     click.echo("Refining topics...")
     try:
         final_topics = create_summary_with_context(text, intermediate_topics, language, model, final_prompt_template)
-    except Exception as e:
+    except LLMError as e:
         click.echo(click.style(f'Error refining topics: {e}', fg='red'))
         raise click.Abort
 
