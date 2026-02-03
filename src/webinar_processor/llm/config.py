@@ -5,12 +5,12 @@ load_dotenv()
 
 # Default models for each task type
 _DEFAULT_MODELS = {
-    'summarization': 'gpt-5.2-mini',
+    'summarization': 'gpt-5-mini',
     'topics': 'gpt-5.2',
     'quiz': 'gpt-5.2',
     'story': 'gpt-5.2',
-    'speaker_extraction': 'gpt-5.2-mini',
-    'default': 'gpt-5.2-mini',
+    'speaker_extraction': 'gpt-5-mini',
+    'default': 'gpt-5-mini',
 }
 
 

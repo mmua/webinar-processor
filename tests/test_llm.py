@@ -43,7 +43,7 @@ class TestLLMConfig:
         """Test getting default model for a known task."""
         with patch.dict('os.environ', {}, clear=True):
             from webinar_processor.llm.config import LLMConfig
-            assert LLMConfig.get_model('summarization') == 'gpt-5.2-mini'
+            assert LLMConfig.get_model('summarization') == 'gpt-5-mini'
             assert LLMConfig.get_model('topics') == 'gpt-5.2'
             assert LLMConfig.get_model('quiz') == 'gpt-5.2'
 
@@ -63,7 +63,7 @@ class TestLLMConfig:
         """Test fallback to hardcoded default for unknown task."""
         with patch.dict('os.environ', {}, clear=True):
             from webinar_processor.llm.config import LLMConfig
-            assert LLMConfig.get_model('unknown_task') == 'gpt-5.2-mini'
+            assert LLMConfig.get_model('unknown_task') == 'gpt-5-mini'
 
     def test_get_model_env_var_priority(self):
         """Test priority: task-specific > LLM_DEFAULT_MODEL > hardcoded."""

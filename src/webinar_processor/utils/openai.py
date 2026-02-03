@@ -12,6 +12,26 @@ spacy_models = {"ru": None, "en": None}
 
 _llm_client = None
 
+TOKEN_LIMITS = {
+    'gpt-4.1': 1047576, 'gpt-4.1-mini': 1047576, 'gpt-4.1-nano': 1047576,
+    'gpt-4o': 128000, 'gpt-4o-mini': 128000, 'gpt-4-turbo': 128000,
+    'gpt-3.5-turbo-0125': 16000,
+    'gpt-5.2': 128000, 'gpt-5-mini': 128000,
+}
+
+OUTPUT_LIMITS = {
+    'gpt-4.1': 32768, 'gpt-4.1-mini': 32768, 'gpt-4.1-nano': 32768,
+    'gpt-4o': 32768, 'gpt-4o-mini': 16384, 'gpt-4-turbo': 32768,
+    'gpt-3.5-turbo-0125': 4096,
+    'gpt-5.2': 64000, 'gpt-5-mini': 64000,
+}
+
+def get_output_limit(model: str) -> int:
+    return OUTPUT_LIMITS.get(model, 4096)
+
+def get_token_limit_summary(model: str) -> int:
+    return min(TOKEN_LIMITS.get(model, 8000), OUTPUT_LIMITS.get(model, 4096))
+
 def get_client():
     global _llm_client
     if _llm_client is None:
@@ -19,30 +39,16 @@ def get_client():
     return _llm_client
 
 @retry(wait=wait_random_exponential(multiplier=1, min=30, max=120), stop=stop_after_attempt(7))
-def get_completion(prompt, model=None):
+def get_completion(prompt, model=None, max_tokens=None):
     client = get_client()
     if model is None:
         model = LLMConfig.get_model('default')
-    result = client.generate(prompt, model=model, temperature=0)
+    if max_tokens is None:
+        max_tokens = get_output_limit(model)
+    result = client.generate(prompt, model=model, max_tokens=max_tokens)
     if result is None:
         raise RuntimeError(f'LLM generation failed for model {model}')
     return result
-
-
-def get_token_limit_summary(model: str) -> int:
-    token_limits = {
-        'gpt-4.1': 1047576, 'gpt-4.1-mini': 1047576, 'gpt-4.1-nano': 1047576,
-        'gpt-4o': 128000, 'gpt-4o-mini': 128000, 'gpt-4-turbo': 128000,
-        'gpt-3.5-turbo-0125': 16000,
-        'gpt-5.2': 262000, 'gpt-5.2-mini': 262000,
-    }
-    output_limits = {
-        'gpt-4.1': 32768, 'gpt-4.1-mini': 32768, 'gpt-4.1-nano': 32768,
-        'gpt-4o': 32768, 'gpt-4o-mini': 16384, 'gpt-4-turbo': 32768,
-        'gpt-3.5-turbo-0125': 4096,
-        'gpt-5.2': 128000, 'gpt-5.2-mini': 128000,
-    }
-    return min(token_limits.get(model, 8000), output_limits.get(model, 4096))
 
 def get_token_limit_story(model: str) -> int:
     return get_token_limit_summary(model)

@@ -1,16 +1,29 @@
-You are an experienced MBA teacher. You have been teaching at Harvard for 20 years.
-Your task is to extract and systematize the main themes, ideas and arguments from the lecture transcription and transform them into a high-quality summary text.
+Ты создаёшь краткое резюме лекции, обрабатывая её по частям.
 
-LECTURE TRANSCRIPT:
--------------------
-{text}
--------------------
-
-KEY TOPICS:
--------------------
+ТЕМЫ ЛЕКЦИИ (используй как структуру резюме):
 {context}
--------------------
 
-Summary should be in Russian and have Markdown format.
+ТЕКУЩЕЕ РЕЗЮМЕ (дополни его информацией из нового фрагмента):
+<current_summary>
+{resume}
+</current_summary>
 
-SUMMARY:
+НОВЫЙ ФРАГМЕНТ ЛЕКЦИИ:
+<new_fragment>
+{text}
+</new_fragment>
+
+ИНСТРУКЦИИ:
+1. Извлеки ключевые идеи, аргументы и примеры из нового фрагмента.
+2. Дополни текущее резюме новой информацией, сохраняя структуру по темам.
+3. Объедини похожие идеи, избегай повторов.
+4. Отмечай важные цитаты и конкретные данные (цифры, названия, имена).
+5. Если есть вопросы аудитории по теме — включи ключевые.
+
+ФОРМАТ РЕЗУЛЬТАТА:
+- Используй Markdown
+- Структурируй по темам из списка выше
+- Каждая тема: заголовок + 3-5 ключевых тезисов
+- Общий объём: 500-1000 слов
+
+ОБНОВЛЁННОЕ РЕЗЮМЕ:
