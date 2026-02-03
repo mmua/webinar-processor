@@ -2,8 +2,6 @@ import click
 import json
 from typing import Optional, List, Dict, Tuple
 import os
-from webinar_processor.services.speaker_database import SpeakerDatabase
-from webinar_processor.services.voice_embedding_service import VoiceEmbeddingService
 from webinar_processor.llm import LLMClient, LLMError
 
 import logging
@@ -20,6 +18,7 @@ def speakers():
 @click.option('--gender', type=click.Choice(['male', 'female', 'unknown']), help='Set speaker gender')
 def update(speaker_id: str, name: Optional[str], gender: Optional[str]):
     """Update speaker information."""
+    from webinar_processor.services.speaker_database import SpeakerDatabase
     db = SpeakerDatabase()
     
     if not name and not gender:
@@ -41,6 +40,7 @@ def update(speaker_id: str, name: Optional[str], gender: Optional[str]):
 @click.argument('speaker_id')
 def info(speaker_id: str):
     """Show speaker information."""
+    from webinar_processor.services.speaker_database import SpeakerDatabase
     db = SpeakerDatabase()
     speaker = db.get_speaker(speaker_id)
     
@@ -87,8 +87,12 @@ def detect_self_introductions(transcript: List[Dict], llm_client: LLMClient) -> 
             if name:
                 name_mappings[speaker_id] = name
         except LLMError as e:
+            # Speaker name extraction is non-critical; silently continue to avoid
+            # aborting the entire relabel process due to transient LLM failures.
+            # This differs from other commands that abort on LLM errors because
+            # speaker detection failure doesn't invalidate the transcript itself.
             logger.warning(f"Failed to extract name for speaker {speaker_id}: {e}")
-            continue  # Skip this speaker, continue with others
+            continue
     
     return name_mappings
 
@@ -114,7 +118,9 @@ def relabel(transcript_path: str, audio_path: str, threshold: float, min_duratio
         with open(transcript_path, 'r', encoding='utf-8') as f:
             transcript = json.load(f)
         
-        # Initialize services
+        # Initialize services (lazy imports to avoid slow startup)
+        from webinar_processor.services.speaker_database import SpeakerDatabase
+        from webinar_processor.services.voice_embedding_service import VoiceEmbeddingService
         db = SpeakerDatabase()
         voice_service = VoiceEmbeddingService()
         llm_client = LLMClient()

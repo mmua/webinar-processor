@@ -1,14 +1,19 @@
 from typing import List
 import logging
 import tiktoken
-import spacy
 
 from webinar_processor.llm import LLMClient, LLMConfig, LLMError, TOKEN_LIMITS, OUTPUT_LIMITS
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 logger = logging.getLogger(__name__)
 
-spacy_models = {"ru": None, "en": None}
+_spacy_models = {"ru": None, "en": None}
+
+
+def _get_spacy_models():
+    """Lazy-load spacy models only when needed."""
+    global _spacy_models
+    return _spacy_models
 
 _llm_client = None
 
@@ -26,6 +31,20 @@ def get_client():
 
 @retry(wait=wait_random_exponential(multiplier=1, min=30, max=120), stop=stop_after_attempt(7))
 def get_completion(prompt, model=None, max_tokens=None):
+    """
+    Generate a completion using the LLM client.
+    
+    Args:
+        prompt: The text prompt to send to the LLM
+        model: The model name to use (defaults to 'default' from config)
+        max_tokens: Maximum tokens in response (defaults to model's output limit)
+    
+    Returns:
+        The generated text response from the LLM
+    
+    Raises:
+        LLMError: When LLM generation fails (e.g., API errors, network issues)
+    """
     client = get_client()
     if model is None:
         model = LLMConfig.get_model('default')
@@ -44,11 +63,13 @@ def sbert_text_punctuate(text: str) -> str:
 
 
 def spacy_split_sentences(text: str, language: str = "ru") -> List[str]:
-    nlp = spacy_models.get(language)
+    import spacy
+    models = _get_spacy_models()
+    nlp = models.get(language)
     if nlp is None:
         model_name = "ru_core_news_md" if language == "ru" else "en_core_web_md"
         nlp = spacy.load(model_name)
-        spacy_models[language] = nlp
+        models[language] = nlp
     doc = nlp(text)
     return [str(sent) for sent in doc.sents]
 

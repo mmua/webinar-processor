@@ -3,9 +3,19 @@ from typing import Optional
 import logging
 
 from .config import LLMConfig
-from .exceptions import LLMError
+from .exceptions import LLMError, TokenLimitError
+from .constants import TOKEN_LIMITS
 
 logger = logging.getLogger(__name__)
+
+def _count_tokens(model: str, text: str) -> int:
+    """Count tokens in text using tiktoken, with fallback for unknown models."""
+    import tiktoken
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        encoding = tiktoken.encoding_for_model("gpt-4o")
+    return len(encoding.encode(text))
 
 class LLMClient:
     _NONE_RESPONSES = frozenset({'none', 'null', 'n/a', ''})
@@ -20,6 +30,14 @@ class LLMClient:
     def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 100) -> Optional[str]:
         if model is None:
             model = LLMConfig.get_model('default')
+
+        # Check token limit before making API call (prompt + completion must fit)
+        token_limit = TOKEN_LIMITS.get(model, 128000)
+        prompt_tokens = _count_tokens(model, prompt)
+        if prompt_tokens + max_tokens > token_limit:
+            raise TokenLimitError(
+                f"Prompt exceeds token limit: {prompt_tokens} + {max_tokens} = {prompt_tokens + max_tokens} > {token_limit} for model {model}"
+            )
 
         try:
             response = self.client.chat.completions.create(
