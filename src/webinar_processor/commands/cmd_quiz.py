@@ -1,11 +1,10 @@
 import os
 import click
-from dotenv import load_dotenv, find_dotenv
 from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.openai import create_summary_with_context
 from webinar_processor.utils.package import get_config_path
+from webinar_processor.commands.base_command import BaseCommand
 
-_ = load_dotenv(find_dotenv())
 
 @click.command()
 @click.argument('text_file', type=click.File("r", encoding="utf-8"), nargs=1)
@@ -19,12 +18,7 @@ def quiz(text_file: click.File, topics_file: click.File, language: str, output_f
     model = LLMConfig.get_model('quiz')
 
     quiz_prompt_path = get_config_path("quiz-prompt.txt")
-    try:
-        with open(quiz_prompt_path, "r", encoding="utf-8") as pf:
-            quiz_prompt = pf.read()
-    except FileNotFoundError:
-        click.echo(click.style(f'Error: Quiz prompt file not found at {quiz_prompt_path}', fg='red'))
-        raise click.Abort
+    quiz_prompt = BaseCommand.load_prompt_template(quiz_prompt_path)
 
     text = text_file.read()
     topics = topics_file.read()
@@ -32,15 +26,6 @@ def quiz(text_file: click.File, topics_file: click.File, language: str, output_f
     try:
         quiz_md = create_summary_with_context(text, topics, language, model, quiz_prompt)
     except LLMError as e:
-        click.echo(click.style(f'Error generating quiz: {e}', fg='red'))
-        raise click.Abort
+        BaseCommand.handle_llm_error(e, "quiz generation")
 
-    if output_file:
-        try:
-            with open(output_file, "w", encoding="utf-8") as of:
-                of.write(quiz_md)
-        except IOError as e:
-            click.echo(click.style(f'Error writing output file: {e}', fg='red'))
-            raise click.Abort
-    else:
-        click.echo(quiz_md)
+    BaseCommand.write_output(quiz_md, output_file)

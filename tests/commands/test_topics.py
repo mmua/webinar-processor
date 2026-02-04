@@ -51,41 +51,39 @@ def test_config_paths_exist():
 def test_topics_command_mock(mock_openai, temp_dir):
     """
     Test the topics command functionality with mocked OpenAI responses.
-    
+
     Verification:
     1. Command should accept a text file input
-    2. Command should call the OpenAI API with appropriate parameters
+    2. Command should call the TopicExtractionService
     3. Command should output the extracted topics
-    
-    This test mocks the OpenAI API to avoid actual API calls.
+
+    This test mocks the service to avoid actual API calls.
     """
     # Create a sample text file
     test_file = temp_dir / "test_transcript.txt"
     with open(test_file, "w", encoding="utf-8") as f:
         f.write("This is a test transcript about artificial intelligence and machine learning topics.")
-    
+
     # Set up the runner
     runner = CliRunner()
-    
-    # Mock the create_summary and create_summary_with_context functions
-    with patch('webinar_processor.commands.cmd_topics.create_summary', 
-               return_value="Intermediate topics: AI, ML") as mock_intermediate:
-        with patch('webinar_processor.commands.cmd_topics.create_summary_with_context', 
-                  return_value="Final topics: Artificial Intelligence, Machine Learning") as mock_final:
-            with patch('webinar_processor.commands.cmd_topics.os.getenv', return_value="fake-api-key"):
-                
-                # Run the command
-                result = runner.invoke(
-                    cli,
-                    ['topics', str(test_file)]
-                )
-                
-                # Check that the command ran successfully
-                assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}: {result.output}"
-                
-                # Check that the mocked functions were called
-                mock_intermediate.assert_called_once()
-                mock_final.assert_called_once()
-                
-                # Check that the output contains the expected topics
-                assert "Final topics" in result.output, f"Expected topics in output, got: {result.output}" 
+
+    # Mock the TopicExtractionService
+    with patch.dict('os.environ', {'LLM_API_KEY': 'fake-api-key'}):
+        with patch('webinar_processor.commands.cmd_topics.TopicExtractionService') as MockService:
+            mock_service = MockService.return_value
+            mock_service.extract_topics.return_value = ("Intermediate topics: AI, ML", "Final topics: Artificial Intelligence, Machine Learning")
+
+            # Run the command
+            result = runner.invoke(
+                cli,
+                ['topics', str(test_file)]
+            )
+
+            # Check that the command ran successfully
+            assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}: {result.output}"
+
+            # Check that the mocked service was called
+            mock_service.extract_topics.assert_called_once()
+
+            # Check that the output contains the expected topics
+            assert "Final topics" in result.output, f"Expected topics in output, got: {result.output}"

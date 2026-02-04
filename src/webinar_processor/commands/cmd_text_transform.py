@@ -1,9 +1,7 @@
 import click
-from dotenv import load_dotenv, find_dotenv
 from webinar_processor.llm import LLMError
 from webinar_processor.utils.openai import text_transform as transform
-
-_ = load_dotenv(find_dotenv())
+from webinar_processor.commands.base_command import BaseCommand
 
 
 @click.command()
@@ -16,21 +14,21 @@ def text_transform(text_file: click.File, prompt_file: click.File, model: str, l
     """
     Transforms text using a given AI model and a prompt template.
 
-    This command reads from a specified text file and a prompt template file, then processes the text 
-    using an AI model. The transformed text is either outputted to the console or written to a specified 
+    This command reads from a specified text file and a prompt template file, then processes text
+    using an AI model. The transformed text is either outputted to the console or written to a specified
     output file.
 
     Args:
-        text_file: A file object representing the text to be transformed. The file should be in UTF-8 encoding.
-        prompt_file: A file object containing the prompt template to be used in text transformation. The file 
+        text_file: A file object representing text to be transformed. The file should be in UTF-8 encoding.
+        prompt_file: A file object containing prompt template to be used in text transformation. The file
                      should be in UTF-8 encoding.
-        model: The name of the AI model to be used for the transformation. Defaults to "gpt-4.1-mini".
-        language: The language code (e.g., 'ru' for Russian) to specify the language of the text and prompt. 
+        model: The name of AI model to be used for transformation. Defaults to "gpt-4.1-mini".
+        language: The language code (e.g., 'ru' for Russian) to specify the language of text and prompt.
                   Defaults to Russian ('ru').
-        output_file: Optional. A file path where the transformed text will be written. If not provided, the 
+        output_file: Optional. A file path where transformed text will be written. If not provided,
                      output is printed to the console.
 
-    The `transform` function (not shown in this snippet) is expected to take the text, language, model, and 
+    The `transform` function (not shown in this snippet) is expected to take the text, language, model, and
     prompt as inputs and return the transformed text.
 
     Examples:
@@ -45,11 +43,6 @@ def text_transform(text_file: click.File, prompt_file: click.File, model: str, l
     try:
         output = transform(text, language, model, prompt_template)
     except LLMError as e:
-        click.echo(click.style(f'Error transforming text: {e}', fg='red'))
-        raise click.Abort()
+        BaseCommand.handle_llm_error(e, "text transformation")
 
-    if output_path:
-        with open(output_path, "w", encoding="utf-8") as of:
-            of.write(output)
-    else:
-        click.echo(output)
+    BaseCommand.write_output(output, output_path)

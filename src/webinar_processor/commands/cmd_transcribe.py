@@ -23,7 +23,10 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
     )
 
     # Сегментация аудио-файла на реплики спикеров. Путь обязательно абсолютный.
-    diarization_result = pipeline(wav_filename)
+    diarization_output = pipeline(wav_filename)
+    # In pyannote.audio 4.x, pipeline returns DiarizeOutput dataclass
+    # Extract the speaker_diarization Annotation which has itertracks() and crop() methods
+    diarization_result = diarization_output.speaker_diarization
 
     diarization_list = []
     # print the result

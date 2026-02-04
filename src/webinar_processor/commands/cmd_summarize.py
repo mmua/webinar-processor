@@ -2,13 +2,11 @@ import json
 import os
 from typing import List
 import click
-from dotenv import load_dotenv, find_dotenv
-
 from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.package import get_config_path
 from webinar_processor.utils.openai import create_summary_with_context, get_completion, get_output_limit
+from webinar_processor.commands.base_command import BaseCommand
 
-_ = load_dotenv(find_dotenv())
 
 # Chunking defaults
 DEFAULT_CHUNK_SIZE = 48000    # chars (~12K tokens)
@@ -226,20 +224,6 @@ def process_chunks(chunks: List[dict], prompt_template: str, model: str, languag
     return "\n\n".join(results)
 
 
-def write_output(content: str, output_file: str) -> None:
-    """Write to file or stdout."""
-    if output_file:
-        try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(content)
-            click.echo(click.style(f"Written to {output_file}", fg='green'))
-        except IOError as e:
-            click.echo(click.style(f'Error: {e}', fg='red'))
-            click.echo(content)
-    else:
-        click.echo(content)
-
-
 def load_topics(topics_file: str, asr_path: str) -> str:
     """Load topics from file or auto-detect next to ASR file."""
     if topics_file:
@@ -266,13 +250,11 @@ def load_topics(topics_file: str, asr_path: str) -> str:
 @click.option('--output-file', type=click.Path(exists=False))
 def summarize(asr_path: str, topics_path: str, model: str, language: str, prompt_file: str, output_file: str):
     """Create transcript summary."""
-    with open(asr_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = BaseCommand.load_json_file(asr_path)
     text = data["text"]
 
     prompt_file = prompt_file or get_config_path("short-summary-with-context.txt")
-    with open(prompt_file, "r", encoding="utf-8") as f:
-        prompt_template = f.read()
+    prompt_template = BaseCommand.load_prompt_template(prompt_file)
 
     if not topics_path:
         asr_dir = os.path.dirname(asr_path)
@@ -290,10 +272,9 @@ def summarize(asr_path: str, topics_path: str, model: str, language: str, prompt
     try:
         summary = create_summary_with_context(text, context, language, model, prompt_template)
     except LLMError as e:
-        click.echo(click.style(f'Error: {e}', fg='red'))
-        raise click.Abort
+        BaseCommand.handle_llm_error(e, "summarization")
 
-    write_output(summary, output_file)
+    BaseCommand.write_output(summary, output_file)
 
 
 @click.command()
@@ -312,12 +293,10 @@ def storytell(asr_file: str, model: str, language: str, prompt_file: str, output
     Processes in chunks with overlap for continuity.
     Auto-detects topics.txt next to ASR file.
     """
-    with open(asr_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = BaseCommand.load_json_file(asr_file)
 
     prompt_file = prompt_file or get_config_path("long-story-chunked.txt")
-    with open(prompt_file, "r", encoding="utf-8") as f:
-        prompt_template = f.read()
+    prompt_template = BaseCommand.load_prompt_template(prompt_file)
 
     topics = load_topics(topics_file, asr_file)
     chunks = extract_chunks(data, chunk_size, overlap)
@@ -331,7 +310,7 @@ def storytell(asr_file: str, model: str, language: str, prompt_file: str, output
     model = model or LLMConfig.get_model('story')
 
     result = process_chunks(chunks, prompt_template, model, language, topics)
-    write_output(result, output_file)
+    BaseCommand.write_output(result, output_file)
 
 
 @click.command()
@@ -340,4 +319,4 @@ def storytell(asr_file: str, model: str, language: str, prompt_file: str, output
 def raw_text(asr_file: click.File, output_file: str):
     """Write raw transcript text."""
     data = json.load(asr_file)
-    write_output(data["text"], output_file)
+    BaseCommand.write_output(data["text"], output_file)

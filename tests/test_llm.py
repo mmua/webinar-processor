@@ -153,23 +153,24 @@ class TestLLMClient:
             with patch('openai.OpenAI', return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
                 client = LLMClient()
-                client.generate("Test prompt", max_tokens=200, temperature=0.5)
+                client.generate("Test prompt", max_tokens=200)
 
                 call_args = mock_openai_client.chat.completions.create.call_args
-                assert call_args[1]['max_tokens'] == 200
-                assert call_args[1]['temperature'] == 0.5
+                assert call_args[1]['max_completion_tokens'] == 200
 
-    def test_generate_api_error_returns_none(self, mock_openai_client):
-        """Test that API errors return None."""
+    def test_generate_api_error_raises_llmerror(self, mock_openai_client):
+        """Test that API errors raise LLMError."""
+        from webinar_processor.llm.exceptions import LLMError
         mock_openai_client.chat.completions.create.side_effect = Exception("API Error")
 
         with patch.dict('os.environ', {'LLM_API_KEY': 'test-key'}):
             with patch('openai.OpenAI', return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
                 client = LLMClient()
-                result = client.generate("Test prompt")
+                with pytest.raises(LLMError) as exc_info:
+                    client.generate("Test prompt")
 
-                assert result is None
+                assert "LLM generation failed" in str(exc_info.value)
 
     def test_extract_speaker_name_success(self, mock_openai_client):
         """Test successful speaker name extraction."""
@@ -269,5 +270,38 @@ class TestLLMClient:
                 client.extract_speaker_name("Test text")
 
                 call_args = mock_openai_client.chat.completions.create.call_args
-                assert call_args[1]['max_tokens'] == 50
-                assert call_args[1]['temperature'] == 0.1
+                assert call_args[1]['max_completion_tokens'] == 50
+
+    def test_generate_token_limit_exceeded(self, mock_openai_client):
+        """Test that TokenLimitError is raised when token limit is exceeded."""
+        from webinar_processor.llm.exceptions import TokenLimitError
+
+        with patch.dict('os.environ', {'LLM_API_KEY': 'test-key'}):
+            with patch('openai.OpenAI', return_value=mock_openai_client):
+                with patch('webinar_processor.llm.client._count_tokens', return_value=200000):
+                    from webinar_processor.llm.client import LLMClient
+                    client = LLMClient()
+
+                    # Mock a prompt that exceeds token limit (200000 tokens > 128000 limit)
+                    with pytest.raises(TokenLimitError) as exc_info:
+                        client.generate("Test prompt", max_tokens=100)
+
+                    assert "exceeds token limit" in str(exc_info.value)
+
+    def test_generate_within_token_limit(self, mock_openai_client):
+        """Test that generate works normally when within token limit."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = "Response"
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with patch.dict('os.environ', {'LLM_API_KEY': 'test-key'}):
+            with patch('openai.OpenAI', return_value=mock_openai_client):
+                from webinar_processor.llm.client import LLMClient
+                client = LLMClient()
+
+                # Short prompt should be fine
+                result = client.generate("Short prompt", max_tokens=100)
+
+                assert result == "Response"
+                mock_openai_client.chat.completions.create.assert_called_once()

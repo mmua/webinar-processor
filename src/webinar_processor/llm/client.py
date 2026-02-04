@@ -57,8 +57,12 @@ class LLMClient:
     
     def extract_speaker_name(self, text: str) -> Optional[str]:
         prompt = f'Analyze the following text and extract the speaker\'s name if they introduce themselves. Look for patterns like "Hi, I\'m [name]", "My name is [name]", "This is [name]", "[name] here", "I\'m [name]". If no clear self-introduction is found, respond with "None". Only return the name itself, not titles or additional words. Return the name in the same language as the text.\n\nText: "{text}"\n\nName:'
-        response = self.generate(prompt, model=LLMConfig.get_model('speaker_extraction'), max_tokens=50)
-        
+        try:
+            response = self.generate(prompt, model=LLMConfig.get_model('speaker_extraction'), max_tokens=50)
+        except LLMError:
+            logger.warning("Failed to extract speaker name due to LLM error")
+            return None
+
         if response and response.lower() not in self._NONE_RESPONSES:
             return response.strip('"\'.,!?') or None
         return None

@@ -1,9 +1,8 @@
 import click
-from dotenv import load_dotenv, find_dotenv
 from webinar_processor.llm import LLMConfig, LLMError
 from webinar_processor.utils.openai import create_summary_with_context
+from webinar_processor.commands.base_command import BaseCommand
 
-_ = load_dotenv(find_dotenv())
 
 @click.command()
 @click.argument('text_file', type=click.File("r", encoding="utf-8"), nargs=1)
@@ -14,7 +13,7 @@ _ = load_dotenv(find_dotenv())
 @click.option('--output-path', type=click.Path(exists=False), help='Path to an output file')
 def summarize_with_context(text_file: click.File, context_file: click.File, prompt_file: click.File, model: str, language: str, output_path: str):
     """
-    Generates a summary of the given text with additional context using an AI model.
+    Generates a summary of given text with additional context using an AI model.
     """
     text = text_file.read()
     context = context_file.read()
@@ -25,11 +24,6 @@ def summarize_with_context(text_file: click.File, context_file: click.File, prom
     try:
         output = create_summary_with_context(text, context, language, model, prompt_template)
     except LLMError as e:
-        click.echo(click.style(f'Error generating summary: {e}', fg='red'))
-        raise click.Abort()
+        BaseCommand.handle_llm_error(e, "summary generation")
 
-    if output_path:
-        with open(output_path, "w", encoding="utf-8") as of:
-            of.write(output)
-    else:
-        click.echo(output)
+    BaseCommand.write_output(output, output_path)

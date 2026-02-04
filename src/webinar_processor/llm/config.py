@@ -1,7 +1,4 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # Default models for each task type
 _DEFAULT_MODELS = {
