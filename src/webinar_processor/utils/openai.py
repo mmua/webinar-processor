@@ -1,8 +1,8 @@
 from typing import List
 import logging
-import tiktoken
 
 from webinar_processor.llm import LLMClient, LLMConfig, LLMError, TOKEN_LIMITS, OUTPUT_LIMITS
+from webinar_processor.utils.token import count_tokens
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 logger = logging.getLogger(__name__)
@@ -84,14 +84,6 @@ def split_text_to_sentences(text: str, language: str = "ru", max_sent_len: int =
         else:
             result.append(s)
     return result
-
-
-def count_tokens(model: str, text: str):
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        encoding = tiktoken.encoding_for_model("gpt-4o")
-    return len(encoding.encode(text))
 
 
 def generate_text_segments(model, long_text, language, token_limit):

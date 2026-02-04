@@ -278,11 +278,11 @@ class TestLLMClient:
 
         with patch.dict('os.environ', {'LLM_API_KEY': 'test-key'}):
             with patch('openai.OpenAI', return_value=mock_openai_client):
-                with patch('webinar_processor.llm.client._count_tokens', return_value=200000):
+                with patch('webinar_processor.utils.token.count_tokens', return_value=128001):
                     from webinar_processor.llm.client import LLMClient
                     client = LLMClient()
 
-                    # Mock a prompt that exceeds token limit (200000 tokens > 128000 limit)
+                    # Mock a prompt that exceeds token limit (128001 tokens > 128000 limit)
                     with pytest.raises(TokenLimitError) as exc_info:
                         client.generate("Test prompt", max_tokens=100)
 

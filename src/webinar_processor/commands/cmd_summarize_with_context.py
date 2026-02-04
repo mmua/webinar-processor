@@ -10,8 +10,8 @@ from webinar_processor.commands.base_command import BaseCommand
 @click.argument('prompt_file', type=click.File("r", encoding="utf-8"), nargs=1)
 @click.argument('model', nargs=1, default=None)
 @click.option('--language', default="ru")
-@click.option('--output-path', type=click.Path(exists=False), help='Path to an output file')
-def summarize_with_context(text_file: click.File, context_file: click.File, prompt_file: click.File, model: str, language: str, output_path: str):
+@click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')
+def summarize_with_context(text_file: click.File, context_file: click.File, prompt_file: click.File, model: str, language: str, output_file: str):
     """
     Generates a summary of given text with additional context using an AI model.
     """

@@ -4,8 +4,7 @@ from typing import Dict, List
 import click
 import json
 
-from webinar_processor.utils.ffmpeg import convert_mp4_to_wav, mp4_silence_remove
-from webinar_processor.utils.path import get_wav_filename
+from webinar_processor.utils.ffmpeg import convert_mp4_to_wav, mp4_silence_remove, get_wav_filename
 
 
 def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
