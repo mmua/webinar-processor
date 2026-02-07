@@ -24,7 +24,7 @@ class BaseCommand:
 
         if isinstance(error, LLMError):
             click.echo(click.style(f'Error during {context}: {error}', fg='red'))
-            raise click.Abort
+            raise click.Abort()
         raise error
 
     @staticmethod
@@ -46,10 +46,10 @@ class BaseCommand:
                 return pf.read()
         except FileNotFoundError:
             click.echo(click.style(f'Error: Prompt file not found at {prompt_path}', fg='red'))
-            raise click.Abort
+            raise click.Abort()
         except IOError as e:
             click.echo(click.style(f'Error reading prompt file: {e}', fg='red'))
-            raise click.Abort
+            raise click.Abort()
 
     @staticmethod
     def write_output(content: str, output_file: Optional[str] = None) -> None:
@@ -71,7 +71,7 @@ class BaseCommand:
             except IOError as e:
                 click.echo(click.style(f'Error writing output file: {e}', fg='red'))
                 click.echo(content)
-                raise click.Abort
+                raise click.Abort()
         else:
             click.echo(content)
 
@@ -93,7 +93,7 @@ class BaseCommand:
         value = os.getenv(var_name)
         if required and value is None:
             click.echo(click.style(f'Error: {var_name} is not set', fg='red'))
-            raise click.Abort
+            raise click.Abort()
         return value
 
     @staticmethod
@@ -116,10 +116,10 @@ class BaseCommand:
                 return json.load(f)
         except FileNotFoundError:
             click.echo(click.style(f'Error: File not found at {file_path}', fg='red'))
-            raise click.Abort
+            raise click.Abort()
         except json.JSONDecodeError as e:
             click.echo(click.style(f'Error parsing JSON file {file_path}: {e}', fg='red'))
-            raise click.Abort
+            raise click.Abort()
         except IOError as e:
             click.echo(click.style(f'Error reading file {file_path}: {e}', fg='red'))
-            raise click.Abort
+            raise click.Abort()

@@ -10,4 +10,4 @@ def ensure_dir_exists(directory: str | Path) -> None:
     """
     if isinstance(directory, str):
         directory = Path(directory)
-        directory.mkdir(parents=True, exist_ok=True)
+    directory.mkdir(parents=True, exist_ok=True)

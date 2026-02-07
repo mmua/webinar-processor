@@ -157,23 +157,24 @@ webinar_processor yt-download https://youtu.be/mKqDUYekM3M video/coaching/
 ## Транскрипция с диаризацией
 webinar_processor transcribe video/coaching/Коучинг\ как\ инструмент\ руководителя.mp4 
 
-## Определение ключевых тем вебинара
-```
-webinar_processor topics video/04-gm/webinar-text.txt --output-file video/04-gm/topics.txt
-```
-
 ## Отправка вебинара на сайт
 
 ## Создание текста вебинара из транскрипции
 ```
-webinar_processor storytell --prompt-file conf/text-prompt.txt video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
+webinar_processor storytell video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
+```
+
+Or single-pass mode:
+```
+webinar_processor storytell --single-pass video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
 ```
 
 
 
-## Создание теста по теме
+## Создание краткого резюме
+Создайте краткое резюме вебинара:
 ```
-webinar_processor summarize-with-context video/04-gm/webinar-text.txt video/04-gm/topics.txt conf/quiz-prompt.txt --output-path video/04-gm/quiz-initial.txt
+webinar_processor summarize video/04-gm/transcript.json.asr --output-file video/04-gm/summary.txt
 ```
 
 # Идеи по улучшению качества
@@ -301,7 +302,7 @@ python -m spacy download ru_core_news_md
 high-ROI refactoring opportunities:
 
 ### 1. Command Naming Consistency
-- Some commands use cmd_ prefix (cmd_quiz.py, cmd_topics.py) while others don't (transcribe.py, download.py)
+- Some commands use cmd_ prefix (cmd_quiz.py) while others don't (transcribe.py, download.py)
 - High ROI because it improves maintainability and makes the codebase more predictable
 - Suggestion: Standardize on either using or not using the cmd_ prefix
 

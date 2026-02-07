@@ -44,7 +44,6 @@ class TestLLMConfig:
         with patch.dict('os.environ', {}, clear=True):
             from webinar_processor.llm.config import LLMConfig
             assert LLMConfig.get_model('summarization') == 'gpt-5-mini'
-            assert LLMConfig.get_model('topics') == 'gpt-5.2'
             assert LLMConfig.get_model('quiz') == 'gpt-5.2'
 
     def test_get_model_from_task_specific_env_var(self):
