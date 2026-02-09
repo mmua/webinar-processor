@@ -27,9 +27,9 @@ def test_get_config_path():
     """
     # Test with known configuration files
     test_files = [
-        "intermediate-topics-prompt.txt",
-        "final-topics-prompt-onepass.txt",
-        "diarization.yaml"
+        "storytell-outline-prompt.txt",
+        "storytell-section-task.txt",
+        "storytell-quiz-prompt.txt"
     ]
     
     for filename in test_files:

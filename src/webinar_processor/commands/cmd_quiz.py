@@ -1,46 +1,53 @@
-import os
 import click
-from dotenv import load_dotenv, find_dotenv
-from webinar_processor.llm import LLMConfig
-from webinar_processor.utils.openai import create_summary_with_context
+from webinar_processor.llm import LLMConfig, LLMError
+from webinar_processor.utils.openai import get_completion, get_output_limit
 from webinar_processor.utils.package import get_config_path
+from webinar_processor.commands.base_command import BaseCommand
 
-_ = load_dotenv(find_dotenv())
 
 @click.command()
-@click.argument('text_file', type=click.File("r", encoding="utf-8"), nargs=1)
-@click.argument('topics_file', type=click.File("r", encoding="utf-8"), nargs=1)
-@click.option('--language', default="ru")
+@click.argument('asr_file', type=click.Path(exists=True), nargs=1)
+@click.option('--model', default=None, help='LLM model')
 @click.option('--output-file', type=click.Path(exists=False), help='Path to an output file')
-def quiz(text_file: click.File, topics_file: click.File, language: str, output_file: str):
+def quiz(asr_file: str, model: str, output_file: str):
     """
-    Create a quiz based on the transcript and topics.
+    Create a quiz based on the transcript.
+
+    Accepts diarized transcript (JSON array) or ASR output (JSON with "text").
+    Shares prompt prefix with storytell/summarize for cache reuse.
     """
-    model = LLMConfig.get_model('quiz')
+    from webinar_processor.utils.transcript_formatter import (
+        is_diarized_format, format_diarized_transcript, add_paragraph_breaks,
+    )
 
-    quiz_prompt_path = get_config_path("quiz-prompt.txt")
-    try:
-        with open(quiz_prompt_path, "r", encoding="utf-8") as pf:
-            quiz_prompt = pf.read()
-    except FileNotFoundError:
-        click.echo(click.style(f'Error: Quiz prompt file not found at {quiz_prompt_path}', fg='red'))
-        raise click.Abort
+    data = BaseCommand.load_json_file(asr_file)
+    model = model or LLMConfig.get_model('quiz')
 
-    text = text_file.read()
-    topics = topics_file.read()
-
-    try:
-        quiz_md = create_summary_with_context(text, topics, language, model, quiz_prompt)
-    except Exception as e:
-        click.echo(click.style(f'Error generating quiz: {e}', fg='red'))
-        raise click.Abort
-
-    if output_file:
-        try:
-            with open(output_file, "w", encoding="utf-8") as of:
-                of.write(quiz_md)
-        except IOError as e:
-            click.echo(click.style(f'Error writing output file: {e}', fg='red'))
-            raise click.Abort
+    # Format transcript (same logic as storytell/summarize)
+    if is_diarized_format(data):
+        click.echo(click.style("Diarized transcript detected, formatting...", fg='blue'))
+        text = format_diarized_transcript(data)
     else:
-        click.echo(quiz_md)
+        text = data.get("text", "")
+        if '\n' not in text and len(text) > 1000:
+            text = add_paragraph_breaks(text)
+
+    if not text.strip():
+        click.echo(click.style("No text to process.", fg='red'))
+        raise click.Abort()
+
+    click.echo(click.style(
+        f"Text: {len(text)} chars, Model: {model}", fg='blue'
+    ))
+
+    prompt_template = BaseCommand.load_prompt_template(
+        get_config_path("storytell-quiz-prompt.txt")
+    )
+    prompt = prompt_template.format(text=text)
+
+    try:
+        result = get_completion(prompt, model, max_tokens=get_output_limit(model))
+    except LLMError as e:
+        BaseCommand.handle_llm_error(e, "quiz generation")
+
+    BaseCommand.write_output(result, output_file)

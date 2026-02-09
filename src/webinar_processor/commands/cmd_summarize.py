@@ -1,337 +1,462 @@
 import json
-import os
-from typing import List
 import click
-from dotenv import load_dotenv, find_dotenv
-
-from webinar_processor.llm import LLMConfig
+from webinar_processor.llm import LLMConfig, LLMError, TOKEN_LIMITS
 from webinar_processor.utils.package import get_config_path
-from webinar_processor.utils.openai import create_summary_with_context, get_completion, get_output_limit
-
-_ = load_dotenv(find_dotenv())
-
-# Chunking defaults
-DEFAULT_CHUNK_SIZE = 48000    # chars (~12K tokens)
-DEFAULT_OVERLAP_SIZE = 3000   # chars overlap between chunks
-CONTEXT_PREV_SIZE = 2000      # chars from previous output
-CONTEXT_NEXT_SIZE = 1000      # chars lookahead into next chunk
-
-
-def smart_chunk_text(text: str, target_size: int) -> List[dict]:
-    """Split text into chunks at sentence boundaries. No timestamp info available."""
-    if len(text) <= target_size:
-        return [{"text": text, "start": None, "end": None}]
-
-    chunks = []
-    current_chunk = ""
-    sentence_endings = ['. ', '! ', '? ', '.\n', '!\n', '?\n']
-
-    sentences = []
-    current_sentence = ""
-    for char in text:
-        current_sentence += char
-        if any(current_sentence.endswith(ending) for ending in sentence_endings):
-            sentences.append(current_sentence.strip())
-            current_sentence = ""
-    if current_sentence.strip():
-        sentences.append(current_sentence.strip())
-
-    for sentence in sentences:
-        if current_chunk and len(current_chunk) + len(sentence) + 1 > target_size:
-            chunks.append({"text": current_chunk.strip(), "start": None, "end": None})
-            current_chunk = ""
-        current_chunk += (sentence + " ")
-
-    if current_chunk.strip():
-        chunks.append({"text": current_chunk.strip(), "start": None, "end": None})
-
-    return chunks
-
-
-def format_timestamp(seconds: float) -> str:
-    """Convert seconds to MM:SS format."""
-    if seconds is None:
-        return "00:00"
-    minutes = int(seconds // 60)
-    secs = int(seconds % 60)
-    return f"{minutes:02d}:{secs:02d}"
-
-
-def chunk_from_segments(asr_segments: List[dict], chunk_size: int, fallback_text: str) -> List[dict]:
-    """Create chunks from ASR segments, preserving timestamp info."""
-    chunks = []
-    current_text = ""
-    current_start = None
-    current_end = None
-
-    for segment in asr_segments:
-        text = segment.get("text", "").strip()
-        if not text:
-            continue
-
-        seg_start = segment.get("start")
-        seg_end = segment.get("end")
-
-        if current_text and len(current_text) + len(text) + 1 > chunk_size:
-            chunks.append({
-                "text": current_text.strip(),
-                "start": current_start,
-                "end": current_end
-            })
-            current_text = ""
-            current_start = None
-            current_end = None
-
-        if current_start is None:
-            current_start = seg_start
-        current_end = seg_end
-        current_text += (text + " ")
-
-    if current_text.strip():
-        chunks.append({
-            "text": current_text.strip(),
-            "start": current_start,
-            "end": current_end
-        })
-
-    if not chunks and fallback_text.strip():
-        chunks = [{"text": fallback_text.strip(), "start": None, "end": None}]
-
-    return chunks
-
-
-def apply_overlap(chunks: List[dict], overlap: int) -> List[dict]:
-    """Add overlap from end of each chunk to beginning of next."""
-    if len(chunks) <= 1 or overlap <= 0:
-        return chunks
-
-    result = [chunks[0]]
-    for i in range(1, len(chunks)):
-        prev_text = chunks[i - 1]["text"]
-        overlap_text = prev_text[-overlap:] if len(prev_text) > overlap else prev_text
-        result.append({
-            "text": overlap_text + " " + chunks[i]["text"],
-            "start": chunks[i]["start"],  # Keep original start time
-            "end": chunks[i]["end"]
-        })
-    return result
-
-
-def extract_chunks(data, chunk_size: int, overlap: int) -> List[dict]:
-    """Extract text chunks from ASR data. Handles both dict and list formats.
-
-    Returns list of dicts: [{"text": str, "start": float|None, "end": float|None}, ...]
-    """
-    # Handle list format: [{text, start, end, speaker}, ...]
-    if isinstance(data, list):
-        click.echo(click.style("Using segment list for chunking (with timestamps).", fg='blue'))
-        chunks = chunk_from_segments(data, chunk_size, "")
-    # Handle dict format: {text: "...", segments: [...]}
-    elif isinstance(data, dict):
-        segments = data.get("segments")
-        full_text = data.get("text", "")
-        if segments:
-            click.echo(click.style("Using ASR segments for chunking (with timestamps).", fg='blue'))
-            chunks = chunk_from_segments(segments, chunk_size, full_text)
-        elif full_text.strip():
-            click.echo(click.style("Using full text for chunking (no timestamps).", fg='yellow'))
-            chunks = smart_chunk_text(full_text, chunk_size)
-        else:
-            return []
-    else:
-        return []
-
-    return apply_overlap(chunks, overlap)
-
-
-def process_chunks(chunks: List[dict], prompt_template: str, model: str, language: str = "ru", topics: str = "") -> str:
-    """
-    Process chunks with simple placeholder substitution.
-
-    Chunks are dicts: {"text": str, "start": float|None, "end": float|None}
-
-    Prompt template may have: {position}, {time_range}, {topics}, {prev_context}, {next_context}, {text}
-    Only {text} is required; others are optional.
-    """
-    if not chunks:
-        return ""
-
-    results = []
-    prev_output = ""
-    total = len(chunks)
-
-    click.echo(click.style(f"Processing {total} chunks (language: {language})...", fg='green'))
-
-    for i, chunk_data in enumerate(chunks):
-        chunk_text = chunk_data["text"]
-        chunk_start = chunk_data.get("start")
-        chunk_end = chunk_data.get("end")
-
-        if not chunk_text.strip():
-            continue
-
-        # Build time range string
-        if chunk_start is not None and chunk_end is not None:
-            time_range = f"{format_timestamp(chunk_start)} - {format_timestamp(chunk_end)}"
-        else:
-            time_range = "[время недоступно]"
-
-        click.echo(click.style(f"Chunk {i+1}/{total} ({len(chunk_text)} chars, {time_range})...", fg='cyan'))
-
-        # Build context values
-        position = f"Фрагмент {i+1} из {total}"
-
-        if i == 0:
-            prev_context = "[НАЧАЛО ДОКУМЕНТА]"
-        else:
-            prev_context = prev_output[-CONTEXT_PREV_SIZE:] if len(prev_output) > CONTEXT_PREV_SIZE else prev_output
-
-        if i + 1 < total:
-            next_text = chunks[i + 1]["text"]
-            next_context = next_text[:CONTEXT_NEXT_SIZE] if len(next_text) > CONTEXT_NEXT_SIZE else next_text
-        else:
-            next_context = "[КОНЕЦ ДОКУМЕНТА]"
-
-        # Substitution with optional placeholders
-        try:
-            prompt = prompt_template.format(
-                position=position,
-                time_range=time_range,
-                topics=topics or "[НЕТ]",
-                prev_context=prev_context,
-                next_context=next_context,
-                text=chunk_text
-            )
-        except KeyError:
-            # Fallback: only {text} placeholder
-            prompt = prompt_template.format(text=chunk_text)
-
-        click.echo(click.style(f"Prompt size: {len(prompt)} chars", fg='yellow'))
-
-        try:
-            result = get_completion(prompt, model, max_tokens=get_output_limit(model))
-        except Exception as e:
-            click.echo(click.style(f"Chunk {i+1} EXCEPTION: {type(e).__name__}: {e}", fg='red'))
-            raise click.Abort()
-
-        if result:
-            results.append(result)
-            prev_output = result
-            click.echo(click.style(f"Chunk {i+1} done. Output: {len(result)} chars, starts: {result[:50]!r}", fg='green'))
-        else:
-            click.echo(click.style(f"Chunk {i+1} failed! Empty result.", fg='red'))
-            raise click.Abort()
-
-    click.echo(click.style(f"Total results: {len(results)}, sizes: {[len(r) for r in results]}", fg='blue'))
-    return "\n\n".join(results)
-
-
-def write_output(content: str, output_file: str) -> None:
-    """Write to file or stdout."""
-    if output_file:
-        try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(content)
-            click.echo(click.style(f"Written to {output_file}", fg='green'))
-        except IOError as e:
-            click.echo(click.style(f'Error: {e}', fg='red'))
-            click.echo(content)
-    else:
-        click.echo(content)
-
-
-def load_topics(topics_file: str, asr_path: str) -> str:
-    """Load topics from file or auto-detect next to ASR file."""
-    if topics_file:
-        with open(topics_file, "r", encoding="utf-8") as f:
-            return f.read()
-
-    # Auto-detect
-    asr_dir = os.path.dirname(asr_path)
-    auto_path = os.path.join(asr_dir, "topics.txt")
-    if os.path.exists(auto_path):
-        click.echo(click.style(f"Auto-detected: {auto_path}", fg='blue'))
-        with open(auto_path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    return ""
-
-
-@click.command()
-@click.argument('asr_path', nargs=1)
-@click.argument('topics_path', nargs=1, default='')
-@click.option('--model', default=None, help='LLM model')
-@click.option('--language', default="ru")
-@click.option('--prompt-file', type=click.Path(exists=True))
-@click.option('--output-file', type=click.Path(exists=False))
-def summarize(asr_path: str, topics_path: str, model: str, language: str, prompt_file: str, output_file: str):
-    """Create transcript summary."""
-    with open(asr_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    text = data["text"]
-
-    prompt_file = prompt_file or get_config_path("short-summary-with-context.txt")
-    with open(prompt_file, "r", encoding="utf-8") as f:
-        prompt_template = f.read()
-
-    if not topics_path:
-        asr_dir = os.path.dirname(asr_path)
-        topics_path = os.path.join(asr_dir, "topics.txt")
-
-    if not os.path.exists(topics_path):
-        click.echo(click.style('Topics file not found', fg='red'))
-        raise click.Abort
-
-    with open(topics_path, encoding="utf-8") as f:
-        context = f.read()
-
-    model = model or LLMConfig.get_model('summarization')
-
-    try:
-        summary = create_summary_with_context(text, context, language, model, prompt_template)
-    except Exception as e:
-        click.echo(click.style(f'Error: {e}', fg='red'))
-        raise click.Abort
-
-    write_output(summary, output_file)
+from webinar_processor.utils.openai import get_completion, get_output_limit
+from webinar_processor.utils.token import count_tokens
+from webinar_processor.commands.base_command import BaseCommand
 
 
 @click.command()
 @click.argument('asr_file', type=click.Path(exists=True), nargs=1)
 @click.option('--model', default=None, help='LLM model')
-@click.option('--language', default="ru", help='Language code (default: ru)')
-@click.option('--prompt-file', type=click.Path(exists=True))
 @click.option('--output-file', type=click.Path(exists=False))
-@click.option('--topics-file', type=click.Path(exists=True))
-@click.option('--chunk-size', default=DEFAULT_CHUNK_SIZE)
-@click.option('--overlap', default=DEFAULT_OVERLAP_SIZE)
-def storytell(asr_file: str, model: str, language: str, prompt_file: str, output_file: str, topics_file: str, chunk_size: int, overlap: int):
+def summarize(asr_file: str, model: str, output_file: str):
     """
-    Transform transcript into academic-style text.
+    Create transcript summary (500-1000 words).
 
-    Processes in chunks with overlap for continuity.
-    Auto-detects topics.txt next to ASR file.
+    Accepts diarized transcript (JSON array) or ASR output (JSON with "text").
+    Shares prompt prefix with storytell for cache reuse.
     """
-    with open(asr_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    from webinar_processor.utils.transcript_formatter import (
+        is_diarized_format, format_diarized_transcript, add_paragraph_breaks,
+    )
 
-    prompt_file = prompt_file or get_config_path("long-story-chunked.txt")
-    with open(prompt_file, "r", encoding="utf-8") as f:
-        prompt_template = f.read()
+    data = BaseCommand.load_json_file(asr_file)
+    model = model or LLMConfig.get_model('summarization')
 
-    topics = load_topics(topics_file, asr_file)
-    chunks = extract_chunks(data, chunk_size, overlap)
+    # Format transcript (same logic as storytell)
+    if is_diarized_format(data):
+        click.echo(click.style("Diarized transcript detected, formatting...", fg='blue'))
+        text = format_diarized_transcript(data)
+    else:
+        text = data.get("text", "")
+        if '\n' not in text and len(text) > 1000:
+            text = add_paragraph_breaks(text)
 
-    if not chunks:
-        click.echo(click.style("No text to process.", fg='yellow'))
-        return
+    if not text.strip():
+        click.echo(click.style("No text to process.", fg='red'))
+        raise click.Abort()
 
-    click.echo(click.style(f"Chunks: {len(chunks)}, Size: {chunk_size}, Overlap: {overlap}", fg='blue'))
+    click.echo(click.style(
+        f"Text: {len(text)} chars, Model: {model}", fg='blue'
+    ))
 
+    prompt_template = BaseCommand.load_prompt_template(
+        get_config_path("storytell-summary-prompt.txt")
+    )
+    prompt = prompt_template.format(text=text)
+
+    try:
+        summary = get_completion(prompt, model, max_tokens=get_output_limit(model))
+    except LLMError as e:
+        BaseCommand.handle_llm_error(e, "summarization")
+
+    BaseCommand.write_output(summary, output_file)
+
+
+# ---------------------------------------------------------------------------
+# storytell command — smart article generation from transcripts
+# ---------------------------------------------------------------------------
+
+@click.command()
+@click.argument('asr_file', type=click.Path(exists=True), nargs=1)
+@click.option('--model', default=None, help='LLM model')
+@click.option('--output-file', type=click.Path(exists=False))
+@click.option('--no-appendix', is_flag=True, help='Skip appendix (key terms + references)')
+@click.option('--single-pass', is_flag=True, help='Use single LLM call (faster, may sacrifice quality)')
+def storytell(asr_file: str, model: str, output_file: str, no_appendix: bool, single_pass: bool):
+    """
+    Transform transcript into educational article.
+
+    Accepts two input formats:
+    - Diarized transcript: JSON array with start/end/speaker/text
+    - ASR output: JSON object with "text" field
+
+    Default: outline + per-section generation (high quality, prompt-cached).
+    --single-pass: one LLM call (faster, cheaper).
+    """
+    from webinar_processor.utils.transcript_formatter import (
+        is_diarized_format, format_diarized_transcript, add_paragraph_breaks,
+        split_segments_by_time,
+    )
+
+    data = BaseCommand.load_json_file(asr_file)
     model = model or LLMConfig.get_model('story')
 
-    result = process_chunks(chunks, prompt_template, model, language, topics)
-    write_output(result, output_file)
+    # Format transcript
+    if is_diarized_format(data):
+        click.echo(click.style("Diarized transcript detected, formatting...", fg='blue'))
+        text = format_diarized_transcript(data)
+        segments = data
+    else:
+        text = data.get("text", "")
+        segments = None
+        if '\n' not in text and len(text) > 1000:
+            click.echo(click.style("Flat text, adding paragraph breaks...", fg='blue'))
+            text = add_paragraph_breaks(text)
+
+    if not text.strip():
+        click.echo(click.style("No text to process.", fg='red'))
+        raise click.Abort()
+
+    text_tokens = count_tokens(model, text)
+    token_limit = TOKEN_LIMITS.get(model, 128000)
+    output_limit = get_output_limit(model)
+    prompt_overhead = 3000
+    available_for_input = token_limit - output_limit - prompt_overhead
+
+    click.echo(click.style(
+        f"Text: {len(text)} chars ({text_tokens} tokens), "
+        f"Model: {model} (context={token_limit}, output={output_limit})",
+        fg='blue'
+    ))
+
+    # Choose generation strategy
+    if single_pass:
+        click.echo(click.style("Single-pass mode...", fg='green'))
+        result = _storytell_single_pass(text, model)
+    elif text_tokens <= available_for_input:
+        click.echo(click.style("Outline + per-section mode (cached prefix)...", fg='green'))
+        result = _storytell_with_outline(text, model, no_appendix)
+    else:
+        click.echo(click.style(
+            f"Text exceeds context ({text_tokens} > {available_for_input} tokens), "
+            "condensing first...",
+            fg='yellow'
+        ))
+        result = _storytell_chunked(text, segments, model, no_appendix)
+
+    if not result:
+        click.echo(click.style("Generation failed", fg='red'))
+        raise click.Abort()
+
+    click.echo(click.style(f"Done: {len(result)} chars", fg='green'))
+    BaseCommand.write_output(result, output_file)
+
+
+# ---------------------------------------------------------------------------
+# Strategy 1: Outline + per-section generation with cached prefix (default)
+# ---------------------------------------------------------------------------
+
+def _storytell_with_outline(text: str, model: str, no_appendix: bool = False) -> str:
+    """
+    Generate article using outline + per-section approach with prompt caching.
+
+    Prompt structure optimized for prefix caching:
+    - Call 1 (outline): [transcript] + [outline instructions]
+    - Calls 2-N (sections): [transcript + outline + terms] + [section task]
+    - Call N+1 (appendix):  [transcript + outline + terms] + [appendix task]
+
+    Calls 2 through N+1 share an identical prefix → cached at 1/10th cost.
+    """
+    # Step 1: Generate outline + terminology (one call, full price)
+    click.echo(click.style("Step 1: Generating outline + terms...", fg='cyan'))
+    outline_prompt = BaseCommand.load_prompt_template(
+        get_config_path("storytell-outline-prompt.txt")
+    )
+    outline_response = _get_completion_safe(
+        outline_prompt.format(text=text), model
+    )
+    if not outline_response:
+        click.echo(click.style("Outline generation failed, falling back to single-pass", fg='yellow'))
+        return _storytell_single_pass(text, model)
+
+    outline = _extract_json(outline_response)
+    if not outline or not outline.get('sections'):
+        click.echo(click.style("Could not parse outline, falling back to single-pass", fg='yellow'))
+        return _storytell_single_pass(text, model)
+
+    chapter_title = outline.get('chapter_title', 'Глава')
+    sections = outline.get('sections', [])
+    terms = outline.get('terms', [])
+
+    click.echo(click.style(
+        f"Outline: \"{chapter_title}\" — {len(sections)} sections, {len(terms)} terms",
+        fg='blue'
+    ))
+    for s in sections:
+        click.echo(click.style(f"  {s.get('id', '?')}: {s.get('title', '?')}", fg='blue'))
+
+    # Build shared prefix (identical for all subsequent calls → cached)
+    cached_prefix = _build_cached_prefix(text, sections, terms)
+    prefix_tokens = count_tokens(model, cached_prefix)
+    click.echo(click.style(
+        f"Cached prefix: {prefix_tokens} tokens (cached after first section call)",
+        fg='blue'
+    ))
+
+    # Step 2: Generate each section (prefix cached from 2nd call onward)
+    section_task_template = BaseCommand.load_prompt_template(
+        get_config_path("storytell-section-task.txt")
+    )
+
+    parts = [f"# {chapter_title}\n"]
+
+    for i, section in enumerate(sections):
+        section_id = section.get('id', f'S{i+1}')
+        section_title = section.get('title', f'Раздел {i+1}')
+        section_covers = section.get('covers', '')
+
+        if i > 0:
+            prev = sections[i - 1]
+            prev_info = (
+                f"ПРЕДЫДУЩИЙ РАЗДЕЛ (уже написан):\n"
+                f"{prev.get('title', '')}: {prev.get('covers', '')}"
+            )
+        else:
+            prev_info = "Это первый раздел статьи. Начни с введения в тему."
+
+        if i + 1 < len(sections):
+            nxt = sections[i + 1]
+            next_info = (
+                f"СЛЕДУЮЩИЙ РАЗДЕЛ (будет написан далее):\n"
+                f"{nxt.get('title', '')}: {nxt.get('covers', '')}"
+            )
+        else:
+            next_info = "Это последний раздел. Завершай статью выводами и призывом к действию."
+
+        click.echo(click.style(
+            f"Step 2: Section {i+1}/{len(sections)}: {section_title}...",
+            fg='cyan'
+        ))
+
+        task_suffix = section_task_template.format(
+            section_number=i + 1,
+            total_sections=len(sections),
+            section_title=section_title,
+            section_covers=section_covers,
+            prev_section_info=prev_info,
+            next_section_info=next_info,
+        )
+
+        prompt = cached_prefix + task_suffix
+        section_text = _get_completion_safe(prompt, model)
+        if section_text:
+            parts.append(f"\n## {section_title}\n\n{section_text}")
+            click.echo(click.style(
+                f"  {section_id} done: {len(section_text)} chars", fg='green'
+            ))
+        else:
+            click.echo(click.style(
+                f"  {section_id} failed, skipping", fg='red'
+            ))
+
+    # Step 3: Generate appendix (same cached prefix)
+    if not no_appendix:
+        click.echo(click.style("Step 3: Generating appendix...", fg='cyan'))
+        appendix_task = BaseCommand.load_prompt_template(
+            get_config_path("storytell-appendix-task.txt")
+        )
+        prompt = cached_prefix + appendix_task
+        appendix = _get_completion_safe(prompt, model)
+        if appendix and appendix.strip():
+            parts.append(f"\n\n---\n\n{appendix.strip()}")
+            click.echo(click.style(
+                f"  Appendix done: {len(appendix)} chars", fg='green'
+            ))
+
+    return "\n".join(parts)
+
+
+def _build_cached_prefix(text: str, sections: list, terms: list) -> str:
+    """
+    Build the shared prompt prefix for all section and appendix calls.
+
+    This string must be IDENTICAL across calls for prompt caching to work.
+    Transcript goes first (largest part), then outline and terms.
+    """
+    outline_text = _format_outline_for_prompt(sections)
+    terms_text = _format_terms_for_prompt(terms)
+
+    return (
+        f"Основной спикер — лектор. Фрагменты [ВОПРОС/КОММЕНТАРИЙ] — реплики слушателей.\n\n"
+        f"ТРАНСКРИПТ:\n---\n{text}\n---\n\n"
+        f"ПЛАН СТАТЬИ:\n{outline_text}\n\n"
+        f"СЛОВАРЬ ТЕРМИНОВ:\n{terms_text}\n\n"
+        f"---\n\n"
+    )
+
+
+def _format_outline_for_prompt(sections: list) -> str:
+    """Format outline sections as readable text for inclusion in prompts."""
+    lines = []
+    for s in sections:
+        sid = s.get('id', '?')
+        title = s.get('title', '?')
+        covers = s.get('covers', '')
+        lines.append(f"- {sid}. {title}: {covers}")
+    return "\n".join(lines)
+
+
+def _format_terms_for_prompt(terms: list) -> str:
+    """Format terminology dictionary for inclusion in cached prefix."""
+    if not terms:
+        return "(не определены)"
+    lines = []
+    for t in terms:
+        term = t.get('term', '')
+        english = t.get('english', '')
+        if term:
+            lines.append(f"- {term} ({english})" if english else f"- {term}")
+    return "\n".join(lines) if lines else "(не определены)"
+
+
+# ---------------------------------------------------------------------------
+# Strategy 2: Single-pass (--single-pass flag)
+# ---------------------------------------------------------------------------
+
+def _storytell_single_pass(text: str, model: str) -> str:
+    """Generate article from full transcript in single LLM call."""
+    prompt_template = BaseCommand.load_prompt_template(
+        get_config_path("storytell-prompt.txt")
+    )
+    prompt = prompt_template.format(text=text)
+
+    try:
+        return get_completion(prompt, model, max_tokens=get_output_limit(model))
+    except LLMError as e:
+        BaseCommand.handle_llm_error(e, "storytell")
+
+
+# ---------------------------------------------------------------------------
+# Strategy 3: Condense + outline + sections (very long transcripts)
+# ---------------------------------------------------------------------------
+
+def _storytell_chunked(text: str, segments, model: str, no_appendix: bool = False) -> str:
+    """
+    Generate article from text that exceeds single-pass context limit.
+
+    1. Split into time-based chunks (diarized) or size-based chunks (flat)
+    2. Condense each chunk into structured notes
+    3. Generate outline from condensed notes
+    4. Write sections from condensed notes with outline context
+    """
+    from webinar_processor.utils.transcript_formatter import (
+        format_diarized_transcript,
+    )
+
+    condense_prompt = BaseCommand.load_prompt_template(
+        get_config_path("storytell-condense-prompt.txt")
+    )
+
+    # Create text chunks
+    if segments:
+        segment_chunks = split_segments_by_time(segments, chunk_duration_minutes=40)
+        text_chunks = [
+            format_diarized_transcript(chunk) for chunk in segment_chunks
+        ]
+        click.echo(click.style(
+            f"Split into {len(text_chunks)} time-based chunks", fg='blue'
+        ))
+    else:
+        text_chunks = _chunk_text_by_size(text, model)
+        click.echo(click.style(
+            f"Split into {len(text_chunks)} chunks", fg='blue'
+        ))
+
+    # Pass 1: Condense each chunk
+    all_notes = []
+    total = len(text_chunks)
+    for i, chunk in enumerate(text_chunks):
+        click.echo(click.style(
+            f"Condensing chunk {i+1}/{total} ({len(chunk)} chars)...", fg='cyan'
+        ))
+        prompt = condense_prompt.format(
+            text=chunk, chunk_index=i + 1, total_chunks=total
+        )
+        notes = _get_completion_safe(prompt, model)
+        if notes:
+            all_notes.append(f"=== Часть {i+1} из {total} ===\n{notes}")
+
+    if not all_notes:
+        click.echo(click.style("All chunks failed to condense", fg='red'))
+        return None
+
+    # Pass 2: Generate outline + sections from condensed notes
+    combined_notes = '\n\n'.join(all_notes)
+    click.echo(click.style(
+        f"Condensed to {len(combined_notes)} chars, generating article...",
+        fg='green'
+    ))
+
+    # Check if condensed notes fit in context for outline+sections approach
+    notes_tokens = count_tokens(model, combined_notes)
+    token_limit = TOKEN_LIMITS.get(model, 128000)
+    output_limit = get_output_limit(model)
+    available = token_limit - output_limit - 3000
+
+    if notes_tokens <= available:
+        # Notes fit — use outline + sections with notes as "transcript"
+        return _storytell_with_outline(combined_notes, model, no_appendix)
+    else:
+        # Notes still too long — fall back to single-pass from notes
+        click.echo(click.style(
+            "Condensed notes still exceed context, using single-pass from notes",
+            fg='yellow'
+        ))
+        write_prompt = BaseCommand.load_prompt_template(
+            get_config_path("storytell-from-notes-prompt.txt")
+        )
+        prompt = write_prompt.format(notes=combined_notes)
+        try:
+            return get_completion(prompt, model, max_tokens=output_limit)
+        except LLMError as e:
+            BaseCommand.handle_llm_error(e, "article from notes")
+
+
+def _chunk_text_by_size(text: str, model: str, target_chunk_tokens: int = 50000) -> list:
+    """Split flat text into overlapping chunks for condensation."""
+    chunk_chars = int(target_chunk_tokens * 3.5)
+    overlap_chars = 5000
+
+    if len(text) <= chunk_chars:
+        return [text]
+
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_chars, len(text))
+        if end < len(text):
+            boundary = text.rfind('\n\n', start + chunk_chars - 10000, end)
+            if boundary == -1:
+                boundary = text.rfind('. ', start + chunk_chars - 10000, end)
+            if boundary != -1:
+                end = boundary + 2
+        chunks.append(text[start:end])
+        if end >= len(text):
+            break
+        start = end - overlap_chars
+
+    return chunks
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _extract_json(text: str):
+    """Extract JSON object from LLM response, handling markdown code blocks."""
+    import re as _re
+    match = _re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, _re.DOTALL)
+    if match:
+        text = match.group(1)
+    match = _re.search(r'\{.*\}', text, _re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+    return None
+
+
+def _get_completion_safe(prompt: str, model: str) -> str:
+    """Get LLM completion, returning None on error instead of raising."""
+    try:
+        return get_completion(prompt, model, max_tokens=get_output_limit(model))
+    except LLMError as e:
+        click.echo(click.style(f"LLM error: {e}", fg='red'))
+        return None
 
 
 @click.command()
@@ -340,4 +465,4 @@ def storytell(asr_file: str, model: str, language: str, prompt_file: str, output
 def raw_text(asr_file: click.File, output_file: str):
     """Write raw transcript text."""
     data = json.load(asr_file)
-    write_output(data["text"], output_file)
+    BaseCommand.write_output(data["text"], output_file)

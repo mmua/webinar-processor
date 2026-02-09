@@ -3,6 +3,9 @@ from typing import Optional
 import logging
 
 from .config import LLMConfig
+from .exceptions import LLMError, TokenLimitError
+from .constants import TOKEN_LIMITS
+from ..utils.token import count_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,14 @@ class LLMClient:
         if model is None:
             model = LLMConfig.get_model('default')
 
+        # Check token limit before making API call (prompt + completion must fit)
+        token_limit = TOKEN_LIMITS.get(model, 128000)
+        prompt_tokens = count_tokens(model, prompt)
+        if prompt_tokens + max_tokens > token_limit:
+            raise TokenLimitError(
+                f"Prompt exceeds token limit: {prompt_tokens} + {max_tokens} = {prompt_tokens + max_tokens} > {token_limit} for model {model}"
+            )
+
         try:
             response = self.client.chat.completions.create(
                 model=model,
@@ -33,16 +44,17 @@ class LLMClient:
                 return None
             return content.strip()
         except Exception as e:
-            # Make error visible in console, not just logger
-            import click
-            click.echo(click.style(f"LLM EXCEPTION for {model}: {type(e).__name__}: {e}", fg='red'), err=True)
             logger.error(f"LLM error for model {model}: {e}")
-            return None
+            raise LLMError(f"LLM generation failed for model {model}: {e}") from e
     
     def extract_speaker_name(self, text: str) -> Optional[str]:
         prompt = f'Analyze the following text and extract the speaker\'s name if they introduce themselves. Look for patterns like "Hi, I\'m [name]", "My name is [name]", "This is [name]", "[name] here", "I\'m [name]". If no clear self-introduction is found, respond with "None". Only return the name itself, not titles or additional words. Return the name in the same language as the text.\n\nText: "{text}"\n\nName:'
-        response = self.generate(prompt, model=LLMConfig.get_model('speaker_extraction'), max_tokens=50)
-        
+        try:
+            response = self.generate(prompt, model=LLMConfig.get_model('speaker_extraction'), max_tokens=50)
+        except LLMError:
+            logger.warning("Failed to extract speaker name due to LLM error")
+            return None
+
         if response and response.lower() not in self._NONE_RESPONSES:
             return response.strip('"\'.,!?') or None
         return None
