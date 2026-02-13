@@ -16,15 +16,15 @@ def upload_webinar(video_file, title, slug, poster_file, transcript_file, endpoi
     _ = load_dotenv(find_dotenv(usecwd=True))
     token = os.getenv("EDU_PATH_TOKEN", None)
     if token is None:
-        click.echo(click.style('Error: Access Token is not set', fg='red'))
-        raise click.Abort
+        click.echo(click.style('Error: EDU_PATH_TOKEN is not set', fg='red'))
+        raise click.Abort()
 
     if endpoint is None:
         endpoint = os.getenv("EDU_PATH_API_ENDPOINT", None)
 
     if endpoint is None:
-        click.echo(click.style('Error: API Endpoint is not set', fg='red'))
-        raise click.Abort
+        click.echo(click.style('Error: No endpoint. Set --endpoint or EDU_PATH_API_ENDPOINT.', fg='red'))
+        raise click.Abort()
 
     video_dir = os.path.dirname(video_file)
     if poster_file is None:
@@ -58,18 +58,19 @@ def upload_webinar(video_file, title, slug, poster_file, transcript_file, endpoi
         'slug': slug,
     }
 
-    # Prepare files payload
-    files = {
-        'video_file': (os.path.basename(video_file), open(video_file, 'rb')),
-        'poster_file': (os.path.basename(poster_file), open(poster_file, 'rb')),
-        'transcript_file': (os.path.basename(transcript_file), open(transcript_file, 'rb')),
-    }
+    # Prepare and send with proper file handle cleanup
+    with open(video_file, 'rb') as vf, \
+         open(poster_file, 'rb') as pf, \
+         open(transcript_file, 'rb') as tf:
+        files = {
+            'video_file': (os.path.basename(video_file), vf),
+            'poster_file': (os.path.basename(poster_file), pf),
+            'transcript_file': (os.path.basename(transcript_file), tf),
+        }
 
-    # Send POST request to the API endpoint
-    response = requests.post(endpoint, headers=headers, files=files, data=data)
+        response = requests.post(endpoint, headers=headers, files=files, data=data)
 
-    # Check the response
     if response.status_code == 201:
         click.echo(click.style('Webinar successfully uploaded!', fg='green'))
     else:
-        click.echo(click.style(f'Failed to upload the Webinar! Response: {response.text}', fg='red')) 
+        click.echo(click.style(f'Failed to upload the Webinar! Response: {response.text}', fg='red'))

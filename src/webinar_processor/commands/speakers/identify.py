@@ -3,7 +3,7 @@ import json
 import numpy as np
 import os
 from webinar_processor.services.speaker_database import SpeakerDatabase
-from webinar_processor.commands.cmd_speaker_analyze import decode_embedding
+from webinar_processor.utils.embedding_codec import decode_embedding
 
 
 def calculate_similarity(embedding1: np.ndarray, embedding2: np.ndarray) -> float:

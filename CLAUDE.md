@@ -1,15 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Build & Run
 
 ```bash
-# Use the project venv (not system python)
 ../venv/bin/pip install -e .
 ../venv/bin/webinar_processor --help
-
-# Run a specific command
 ../venv/bin/webinar_processor storytell transcript.json --output-file story.txt
 ../venv/bin/webinar_processor summarize transcript.json --output-file summary.txt
 ../venv/bin/webinar_processor quiz transcript.json --output-file quiz.txt
@@ -18,150 +13,110 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Testing
 
 ```bash
-../venv/bin/python -m pytest                              # all tests
-../venv/bin/python -m pytest tests/test_llm.py -v         # single file
-../venv/bin/python -m pytest tests/test_llm.py::TestLLMConfig::test_get_api_key_from_llm_api_key  # single test
-../venv/bin/python -m pytest -k "test_get_api_key"        # by pattern
+../venv/bin/python -m pytest                        # all tests
+../venv/bin/python -m pytest tests/test_llm.py -v   # single file
+../venv/bin/python -m pytest -k "test_get_api_key"  # by pattern
 ```
-
-Known pre-existing failures (not ours): `test_generate_token_limit_exceeded`.
 
 ## Architecture
 
-**CLI layer** (`src/webinar_processor/`): Click-based CLI. Entry point is `cli` in `__init__.py`. Commands are registered via `cli.add_command()`. Each command lives in `commands/cmd_*.py`, exports a `@click.command()` function, and is re-exported through `commands/__init__.py`.
+```
+src/webinar_processor/
+  __init__.py              CLI entry point, logging config
+  commands/
+    cmd_*.py               Thin Click commands (I/O + delegation)
+    speakers/              Speaker management subcommands
+  services/
+    storytell_service.py   Article generation (3 strategies)
+    transcript_service.py  Load & format transcripts
+    speaker_database.py    SQLite speaker profiles
+    speaker_name_extractor.py  LLM name extraction
+    voice_embedding_service.py Voice embeddings (pyannote)
+  llm/
+    config.py              Model selection & env vars
+    client.py              OpenAI wrapper + token pre-check
+    constants.py           TOKEN_LIMITS, OUTPUT_LIMITS
+    exceptions.py          LLMError, TokenLimitError
+  utils/
+    completion.py          get_completion() with retry, singleton client
+    io.py                  load_prompt_template, write_output
+    transcript_formatter.py  Diarized text formatting
+    token.py               tiktoken wrapper
+    embedding_codec.py     base64 numpy encode/decode
+    ffmpeg.py              Audio/video conversion
+    package.py             Resource path resolution
+  resources/conf/*.txt     Prompt templates ({placeholder} syntax)
+```
 
-**LLM layer** (`llm/`): `LLMConfig` reads env vars (LLM_API_KEY, LLM_BASE_URL, per-task model overrides like `LLM_STORY_MODEL`). `LLMClient` wraps OpenAI API with token-limit pre-check. `constants.py` has TOKEN_LIMITS and OUTPUT_LIMITS dicts.
+### Layer rules
 
-**Completion helper** (`utils/openai.py`): `get_completion(prompt, model, max_tokens)` is the main function commands use. Has `@retry` with exponential backoff (7 attempts). Singleton `LLMClient`.
+- **Commands** depend on services and utils. They own all Click interaction (echo, Abort, options).
+- **Services** use `logging`, never `click`. They raise standard exceptions (`ValueError`, `LLMError`). Commands catch and translate to user-facing output.
+- **LLM layer** is a thin OpenAI wrapper. Domain logic does not belong here.
+- **Utils** are stateless helpers. `completion.py` holds the singleton `LLMClient`.
 
-**Prompt templates** live in `src/webinar_processor/resources/conf/*.txt`. Loaded via `BaseCommand.load_prompt_template(get_config_path("filename.txt"))`. Templates use `str.format()` placeholders like `{text}`.
+### Adding a command
 
-**BaseCommand** (`commands/base_command.py`): Static utility methods shared across commands — `load_json_file`, `load_prompt_template`, `write_output`, `handle_llm_error`.
+1. Create `commands/cmd_<name>.py` with a `@click.command()` function
+2. Import in `commands/__init__.py`, add to `__all__`
+3. Register in `__init__.py` with `cli.add_command(commands.<name>)`
 
-## Storytell Pipeline (main content generation)
+### Adding a prompt
 
-The `storytell` command in `cmd_summarize.py` is the most complex, with 3 strategies:
+1. Create `.txt` in `resources/conf/`
+2. Load with `load_prompt_template(get_config_path("filename.txt"))`
+3. Use `{placeholder}` syntax
 
-1. **Outline + per-section** (default): Generates JSON outline+terms, then builds a cached prefix (transcript + outline + terms). Each section call appends a different suffix to the same prefix, enabling prompt caching at 1/10th cost.
-2. **Single-pass** (`--single-pass`): One LLM call with `storytell-prompt.txt`.
-3. **Chunked** (auto for long transcripts): Splits into time/size chunks, condenses each, then feeds condensed notes into strategy 1 or 2.
+## Key Design Decisions
 
-Prompt caching design: all calls after the outline share an identical prefix string. The prefix must be byte-identical across calls for the API cache to hit.
+**Output window << input window.** LLMs read 128-256K tokens but output 32-128K max. Never ask the LLM to reproduce the full transcript. Instead: small, focused output per call.
 
-## Adding a New Command
+**Outline + per-section with prompt caching.** A 2-hour lecture is 100-200K tokens. Single-pass truncates or fails. We generate a JSON outline first, then write one section at a time. All section calls share a byte-identical prefix (transcript + outline + terms), so the API caches it at 1/10th cost. Any prefix mutation breaks the cache.
 
-1. Create `src/webinar_processor/commands/cmd_<name>.py` with a `@click.command()` function
-2. Use `BaseCommand` for file I/O and error handling
-3. Add import to `commands/__init__.py` and `__all__`
-4. Register in `__init__.py` with `cli.add_command(commands.<name>)`
+**Terminology in the cached prefix.** Terms are extracted in the outline call and baked into the shared prefix. Every section sees the same terminology from the start, avoiding inconsistencies.
 
-## Adding a Prompt
+**No polish pass.** Rewriting the full article would hit the output window limit and double cost. Quality comes from: terms in prefix, prev/next section context, and focused section prompts.
 
-1. Create `.txt` file in `src/webinar_processor/resources/conf/`
-2. Load with `BaseCommand.load_prompt_template(get_config_path("filename.txt"))`
-3. Use `{placeholder}` syntax for template variables
+**Chunked fallback.** When text exceeds context, we condense 40-min chunks first, then run outline+sections on condensed notes. If notes still don't fit, single-pass from notes.
+
+**Shared prefix across commands.** `summarize`, `quiz`, and `storytell` share the same transcript prefix format. Running them in sequence reuses the API cache.
 
 ## Model Configuration
 
 Priority: `LLM_<TASK>_MODEL` env var > `LLM_DEFAULT_MODEL` env var > hardcoded defaults in `llm/config.py`.
 
-Task keys: `story`, `summarization`, `quiz`, `topics`, `polish`, `speaker_extraction`, `default`.
+Task keys: `story`, `summarization`, `quiz`, `speaker_extraction`, `default`.
 
 ## Input Formats
 
-Two transcript formats are accepted:
-- **Diarized**: JSON array with `{start, end, speaker, text}` segments
+- **Diarized**: JSON array of `{start, end, speaker, text}` segments
 - **ASR**: JSON object with `"text"` field
 
-Detection via `is_diarized_format()` in `utils/transcript_formatter.py`.
-
-## Key Constraints & Design Decisions
-
-**Output window << input window.** LLMs can read 128-256K tokens but only output 32-128K. Never ask the LLM to reproduce the full transcript plus modifications. Instead: small, focused output per call (one section at a time).
-
-**Transcripts are very long.** A 2-hour lecture is 100-200K tokens. This drives the entire architecture — single-pass won't fit or produces truncated output, so we split into outline + N section calls.
-
-**Prompt caching cuts cost 10x.** The OpenAI API caches identical prompt prefixes. We exploit this: the cached prefix (transcript + outline + terms) is sent identically on every section call. Only the suffix (section task) varies. This means the transcript is charged at full price once (outline call), then at 1/10th for each section and appendix call. **Any change to the prefix string between calls breaks the cache** — it must be byte-identical.
-
-**Terminology extracted early.** Terms are extracted in the outline call (not a separate pass) and included in the cached prefix. This ensures every section uses consistent terminology from the start, rather than fixing inconsistencies after the fact.
-
-**No polish step.** We eliminated a "rewrite full text" polish pass. It would require reproducing the entire article (output window problem) and adds cost. Instead, quality comes from: terms in the prefix, per-section context (prev/next section info), and a good section prompt.
-
-**Chunked fallback for extreme length.** When the transcript exceeds the model's context window, we condense chunks first (40-min time windows or 50K-token blocks with overlap), then run the normal outline+sections pipeline on the condensed notes. If even condensed notes don't fit, there's a final single-pass-from-notes fallback.
-
-**Shared prompt prefix across commands.** The `summarize`, `quiz`, and `storytell` commands all use the same prompt prefix format (transcript header + transcript + separator). This means running them in sequence benefits from the API cache — the transcript is only fully processed on the first call.
+Detection: `is_diarized_format()` in `transcript_formatter.py`. Loading: `transcript_service.load_and_format_transcript()`.
 
 ## Language
 
-Content prompts and output are in Russian. Code, comments, and variable names are in English.
+Prompts and output are in Russian. Code and comments are in English.
 
 ## Integration Contracts
 
-Contracts defining data formats exchanged with external systems (e.g., snap-study website).
+### Quiz Format
 
-### Quiz Format Contract
-
-The `quiz` command generates quizzes in a specific Markdown format consumed by the hosting platform.
-
-**Format Specification:**
 ```markdown
-## Квиз: [Topic from transcript]
+## Квиз: [Topic]
 
-### Вопрос 1: [Question text based on lecture content]
+### Вопрос 1: [Question]
 - **A) # Correct answer**
-  > Объяснение: [Detailed explanation why correct, referencing lecture concepts]
-- **B) Incorrect option**
-  > Объяснение: [Explanation of misconception or why wrong]
-- **C) Incorrect option**
-  > Объяснение: [Explanation...]
-[3-5 options total]
-
-### Вопрос 2: ...
-[8-12 questions total]
+  > Объяснение: [Why correct]
+- **B) Wrong answer**
+  > Объяснение: [Why wrong]
 ```
 
-**Structure Requirements:**
-- Header: `## Квиз: ` followed by topic
-- Questions: `### Вопрос N: ` prefix (sequential numbering)
-- Options: Bullet list with `**X) ` prefix where X is A, B, C, etc.
-- Correct marker: `#` immediately after `**X) ` (e.g., `**A) # Correct`)
-- Explanations: Blockquote (`>`) on line following each option
-- Language: Russian
-- Content: Understanding-based (not memorization), using lecture examples
+Rules: 8-12 questions, 3-5 options each, exactly one correct (marked with `#`), every option has an explanation blockquote.
 
-**Validation Rules:**
-- 8-12 questions per quiz
-- 3-5 answer options per question
-- Exactly one correct answer per question
-- Every option must have an explanation blockquote
-- Explanations must reference specific lecture content
+### Upload API
 
-### Webinar Upload Contract
+Both use `Authorization: Bearer {EDU_PATH_TOKEN}`.
 
-The `upload_webinar` and `upload_quiz` commands communicate with the snap-study API using multipart/form-data POST requests.
-
-**Webinar Upload (`upload_webinar`):**
-- **Endpoint**: Configurable via `EDU_PATH_API_ENDPOINT` env var
-- **Method**: POST
-- **Headers**: `Authorization: Bearer {EDU_PATH_TOKEN}`
-- **Form Data**:
-  - `title`: Webinar title
-  - `slug`: Unique identifier
-  - `summary`: Short summary text (optional)
-  - `long_summary`: Full article text (optional)
-- **Files**:
-  - `video_file`: Video file (required)
-  - `poster_file`: Thumbnail image (optional, defaults to `posters/poster.jpg`)
-  - `transcript_file`: Transcript JSON (optional, defaults to `transcript.json`)
-- **Success**: HTTP 201
-
-**Quiz Upload (`upload_quiz`):**
-- **Endpoint**: Configurable, defaults to specific snap-study URL
-- **Method**: POST
-- **Headers**: `Authorization: Bearer {EDU_PATH_TOKEN}`
-- **Form Data**:
-  - `slug`: Webinar identifier
-  - `content`: Quiz markdown content (see Quiz Format Contract above)
-- **Success**: HTTP 201
-
-**Note**: Upload commands are coupled to HSE's snap-study infrastructure and will be migrated to the website project in the future.
+- **upload_webinar**: POST to `EDU_PATH_API_ENDPOINT` with multipart form (title, slug, video_file, poster_file, transcript_file). Returns 201.
+- **upload_quiz**: POST to `EDU_PATH_QUIZ_ENDPOINT` with slug + quiz markdown content. Returns 201.

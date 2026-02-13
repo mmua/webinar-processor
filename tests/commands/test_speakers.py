@@ -6,7 +6,8 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
-from webinar_processor.commands.cmd_speakers import speakers, _generate_speaker_id
+from webinar_processor.commands.speakers import speakers
+from webinar_processor.commands.speakers.crud import generate_speaker_id as _generate_speaker_id
 from webinar_processor.services.speaker_database import SpeakerDatabase, EMBEDDING_DIM, EMBEDDING_DTYPE
 
 # The CLI commands use lazy imports inside function bodies:
@@ -14,7 +15,7 @@ from webinar_processor.services.speaker_database import SpeakerDatabase, EMBEDDI
 # To patch these, we patch the class at its source module.
 DB_PATCH = 'webinar_processor.services.speaker_database.SpeakerDatabase'
 VOICE_PATCH = 'webinar_processor.services.voice_embedding_service.VoiceEmbeddingService'
-LLM_PATCH = 'webinar_processor.commands.cmd_speakers.LLMClient'
+SPEAKER_NAME_PATCH = 'webinar_processor.services.speaker_name_extractor.extract_speaker_name'
 
 
 @pytest.fixture
@@ -56,7 +57,7 @@ class TestListCommand:
 
     def test_list_with_speakers(self, runner, db):
         emb = _make_embedding(1)
-        db.add_speaker("spk_list0001", emb, confirmed_name="Иванов", gender="male")
+        db.add_speaker("spk_list0001", emb, confirmed_name="Иванов")
         with patch(DB_PATCH, return_value=db):
             result = runner.invoke(speakers, ['list'])
         assert result.exit_code == 0
@@ -266,10 +267,10 @@ class TestEnrollCommand:
 
 
 class TestRelabelCommand:
-    @patch(LLM_PATCH)
+    @patch(SPEAKER_NAME_PATCH, return_value=None)
     @patch(VOICE_PATCH)
     @patch(DB_PATCH)
-    def test_relabel_creates_new_speakers(self, mock_db_cls, mock_voice_cls, mock_llm_cls, runner):
+    def test_relabel_creates_new_speakers(self, mock_db_cls, mock_voice_cls, mock_extract_name, runner):
         transcript = [
             {"start": 0, "end": 5, "speaker": "SPEAKER_00", "text": "Hello"},
             {"start": 5, "end": 10, "speaker": "SPEAKER_01", "text": "World"},
@@ -296,10 +297,6 @@ class TestRelabelCommand:
         mock_db.add_appearance.return_value = True
         mock_db_cls.return_value = mock_db
 
-        mock_llm = MagicMock()
-        mock_llm.extract_speaker_name.return_value = None
-        mock_llm_cls.return_value = mock_llm
-
         try:
             result = runner.invoke(speakers, ['relabel', transcript_path, '/fake/audio.wav'])
             assert result.exit_code == 0
@@ -314,10 +311,10 @@ class TestRelabelCommand:
             if os.path.exists(output):
                 os.unlink(output)
 
-    @patch(LLM_PATCH)
+    @patch(SPEAKER_NAME_PATCH, return_value=None)
     @patch(VOICE_PATCH)
     @patch(DB_PATCH)
-    def test_relabel_output_option(self, mock_db_cls, mock_voice_cls, mock_llm_cls, runner):
+    def test_relabel_output_option(self, mock_db_cls, mock_voice_cls, mock_extract_name, runner):
         transcript = [
             {"start": 0, "end": 5, "speaker": "SPEAKER_00", "text": "Hello"},
         ]
@@ -342,10 +339,6 @@ class TestRelabelCommand:
         mock_db.add_appearance.return_value = True
         mock_db_cls.return_value = mock_db
 
-        mock_llm = MagicMock()
-        mock_llm.extract_speaker_name.return_value = None
-        mock_llm_cls.return_value = mock_llm
-
         try:
             result = runner.invoke(speakers, ['relabel', transcript_path, '/fake/audio.wav', '-o', output_path])
             assert result.exit_code == 0
@@ -358,10 +351,10 @@ class TestRelabelCommand:
             if os.path.exists(output_path):
                 os.unlink(output_path)
 
-    @patch(LLM_PATCH)
+    @patch(SPEAKER_NAME_PATCH, return_value=None)
     @patch(VOICE_PATCH)
     @patch(DB_PATCH)
-    def test_relabel_no_embeddings(self, mock_db_cls, mock_voice_cls, mock_llm_cls, runner):
+    def test_relabel_no_embeddings(self, mock_db_cls, mock_voice_cls, mock_extract_name, runner):
         transcript = [{"start": 0, "end": 1, "speaker": "SPEAKER_00", "text": "Hi"}]
 
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
@@ -375,8 +368,6 @@ class TestRelabelCommand:
         mock_db = MagicMock()
         mock_db.get_all_speakers.return_value = []
         mock_db_cls.return_value = mock_db
-
-        mock_llm_cls.return_value = MagicMock()
 
         try:
             result = runner.invoke(speakers, ['relabel', transcript_path, '/fake/audio.wav'])

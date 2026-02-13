@@ -33,7 +33,6 @@ class TestAddSpeaker:
             "spk_test0002", emb,
             inferred_name="Иванов",
             confirmed_name="Проф. Иванов",
-            gender="male",
             confidence_score=0.95,
             num_samples=5,
             notes="Лектор",
@@ -42,7 +41,6 @@ class TestAddSpeaker:
         assert speaker is not None
         assert speaker['confirmed_name'] == "Проф. Иванов"
         assert speaker['inferred_name'] == "Иванов"
-        assert speaker['gender'] == "male"
         assert speaker['confidence_score'] == 0.95
         assert speaker['num_samples'] == 5
         assert speaker['notes'] == "Лектор"

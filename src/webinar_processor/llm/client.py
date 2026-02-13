@@ -9,9 +9,8 @@ from ..utils.token import count_tokens
 
 logger = logging.getLogger(__name__)
 
-class LLMClient:
-    _NONE_RESPONSES = frozenset({'none', 'null', 'n/a', ''})
 
+class LLMClient:
     def __init__(self):
         LLMConfig.validate()
         self.client = openai.OpenAI(
@@ -46,15 +45,4 @@ class LLMClient:
         except Exception as e:
             logger.error(f"LLM error for model {model}: {e}")
             raise LLMError(f"LLM generation failed for model {model}: {e}") from e
-    
-    def extract_speaker_name(self, text: str) -> Optional[str]:
-        prompt = f'Analyze the following text and extract the speaker\'s name if they introduce themselves. Look for patterns like "Hi, I\'m [name]", "My name is [name]", "This is [name]", "[name] here", "I\'m [name]". If no clear self-introduction is found, respond with "None". Only return the name itself, not titles or additional words. Return the name in the same language as the text.\n\nText: "{text}"\n\nName:'
-        try:
-            response = self.generate(prompt, model=LLMConfig.get_model('speaker_extraction'), max_tokens=50)
-        except LLMError:
-            logger.warning("Failed to extract speaker name due to LLM error")
-            return None
 
-        if response and response.lower() not in self._NONE_RESPONSES:
-            return response.strip('"\'.,!?') or None
-        return None

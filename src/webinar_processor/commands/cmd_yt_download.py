@@ -41,7 +41,3 @@ def download(url: str, output_dir: str):
         file.write(response.content)
 
     click.echo(video_path)
-
-
-if __name__ == "__main__":
-    download() 

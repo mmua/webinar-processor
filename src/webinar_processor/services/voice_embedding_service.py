@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from typing import Dict, List, Optional
 from pyannote.audio import Audio
@@ -6,6 +7,8 @@ from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbed
 import tempfile
 import os
 from webinar_processor.utils.ffmpeg import convert_mp4_to_wav, get_wav_filename
+
+logger = logging.getLogger(__name__)
 
 
 class VoiceEmbeddingService:
@@ -20,18 +23,6 @@ class VoiceEmbeddingService:
         self.model = PretrainedSpeakerEmbedding(self.model_name)
         self.audio = Audio(sample_rate=16000, mono="downmix")
 
-    @property
-    def embedding_dim(self) -> int:
-        """Return the embedding dimension for the current model."""
-        # WeSpeaker ResNet34-LM produces 256-dim embeddings
-        if 'wespeaker' in self.model_name.lower() or 'resnet' in self.model_name.lower():
-            return 256
-        # ECAPA-TDNN produces 192-dim embeddings
-        if 'ecapa' in self.model_name.lower():
-            return 192
-        # Default: try to infer from model, fallback to 256
-        return 256
-
     def extract_embedding(self, audio_path: str, start_time: float, end_time: float) -> Optional[np.ndarray]:
         """Extract voice embedding from an audio segment."""
         try:
@@ -40,20 +31,20 @@ class VoiceEmbeddingService:
             embedding = self.model(waveform[None])
             return embedding[0]
         except Exception as e:
-            print(f"Error extracting voice embedding: {str(e)}")
+            logger.error("Error extracting voice embedding: %s", e)
             return None
 
     def extract_single_speaker_embedding(self, audio_path: str) -> Optional[np.ndarray]:
         """Extract embedding from full audio file, treating all speech as one speaker.
 
-        Used for enrollment — processes the entire audio as a single speaker.
+        Used for enrollment -- processes the entire audio as a single speaker.
         """
         try:
             waveform, sample_rate = self.audio(audio_path)
             embedding = self.model(waveform[None])
             return embedding[0]
         except Exception as e:
-            print(f"Error extracting single-speaker embedding: {str(e)}")
+            logger.error("Error extracting single-speaker embedding: %s", e)
             return None
 
     def get_speaker_embeddings(self,

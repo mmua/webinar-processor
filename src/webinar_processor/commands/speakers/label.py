@@ -3,7 +3,7 @@ import json
 import os
 
 from webinar_processor.services.speaker_database import SpeakerDatabase
-from webinar_processor.commands.cmd_speaker_analyze import decode_embedding
+from webinar_processor.utils.embedding_codec import decode_embedding
 
 
 def format_timestamp(seconds: float) -> str:
@@ -183,7 +183,7 @@ def label(directory):
 def _add_speaker_to_db(db: SpeakerDatabase, name: str, samples: list):
     """Add a labeled speaker to the database using all clean sample embeddings."""
     import numpy as np
-    import uuid
+    from .crud import generate_speaker_id
 
     try:
         if not samples:
@@ -219,7 +219,7 @@ def _add_speaker_to_db(db: SpeakerDatabase, name: str, samples: list):
                 return speaker['speaker_id']
 
         # Create new speaker
-        speaker_id = f"spk_{uuid.uuid4().hex[:8]}"
+        speaker_id = generate_speaker_id()
         success = db.add_speaker(
             speaker_id=speaker_id,
             voice_embedding=embedding,
