@@ -8,7 +8,7 @@ This project provides tools to process webinar recordings, including transcripti
 *   Transcribe audio/video files (e.g., using OpenAI Whisper) to create subtitles.
 *   Perform speaker diarization to identify who spoke when.
 *   Identify known speakers using voice embeddings and a speaker database.
-*   For unknown speakers, detect gender and potentially generate a representative mascot/avatar.
+*   Manage speaker profiles with manual gender labeling.
 *   Create a streaming video player with synchronized subtitles (clicking on text navigates video).
 *   Generate a text summary of the video content.
 *   Detect slides within the video and integrate them into the subtitles/transcript.
@@ -188,11 +188,8 @@ webinar_processor summarize video/04-gm/transcript.json.asr --output-file video/
 * Прогон результатов через ChatGPT для исправления ошибок
 
 ## Ошибки в диаризации
-* Подготовка embedding-ов известных нам спикеров
-* Подбор моделей embedding-ов
-
-# Определение пола
-Базируется на https://github.com/SuperKogito/Voice-based-gender-recognition
+*   Подготовка embedding-ов известных нам спикеров
+*   Подбор моделей embedding-ов
 
 # Запуск на EC2
 

@@ -1,7 +1,6 @@
 """Token utilities for LLM operations."""
 
 import tiktoken
-from typing import Union
 
 
 def count_tokens(model: str, text: str) -> int:

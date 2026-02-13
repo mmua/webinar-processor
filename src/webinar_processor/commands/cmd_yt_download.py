@@ -17,7 +17,7 @@ def download(url: str, output_dir: str):
     """
     try:
         yt = YouTube(url)
-    except Exception as e:
+    except Exception:
         click.echo("Invalid YouTube URL", err=True)
         sys.exit(1)
         

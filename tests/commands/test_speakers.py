@@ -165,7 +165,7 @@ class TestDeleteCommand:
         emb = _make_embedding(32)
         db.add_speaker("spk_del0003", emb)
         with patch(DB_PATCH, return_value=db):
-            result = runner.invoke(speakers, ['delete', 'spk_del0003'], input='n\n')
+            runner.invoke(speakers, ['delete', 'spk_del0003'], input='n\n')
         assert db.get_speaker("spk_del0003") is not None
 
     def test_delete_not_found(self, runner, db):

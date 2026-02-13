@@ -37,7 +37,7 @@ def match_speaker_voting(target_samples: list, reference_speakers: list, thresho
         try:
             emb = decode_embedding(sample['embedding'])
             target_embs.append(emb)
-        except:
+        except Exception:
             continue
 
     if not target_embs:

@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ../venv/bin/python -m pytest -k "test_get_api_key"        # by pattern
 ```
 
-Known pre-existing failures (not ours): `test_generate_token_limit_exceeded`, `test_ensure_dir_exists`, `test_voice_*`.
+Known pre-existing failures (not ours): `test_generate_token_limit_exceeded`.
 
 ## Architecture
 
@@ -94,3 +94,74 @@ Detection via `is_diarized_format()` in `utils/transcript_formatter.py`.
 ## Language
 
 Content prompts and output are in Russian. Code, comments, and variable names are in English.
+
+## Integration Contracts
+
+Contracts defining data formats exchanged with external systems (e.g., snap-study website).
+
+### Quiz Format Contract
+
+The `quiz` command generates quizzes in a specific Markdown format consumed by the hosting platform.
+
+**Format Specification:**
+```markdown
+## Квиз: [Topic from transcript]
+
+### Вопрос 1: [Question text based on lecture content]
+- **A) # Correct answer**
+  > Объяснение: [Detailed explanation why correct, referencing lecture concepts]
+- **B) Incorrect option**
+  > Объяснение: [Explanation of misconception or why wrong]
+- **C) Incorrect option**
+  > Объяснение: [Explanation...]
+[3-5 options total]
+
+### Вопрос 2: ...
+[8-12 questions total]
+```
+
+**Structure Requirements:**
+- Header: `## Квиз: ` followed by topic
+- Questions: `### Вопрос N: ` prefix (sequential numbering)
+- Options: Bullet list with `**X) ` prefix where X is A, B, C, etc.
+- Correct marker: `#` immediately after `**X) ` (e.g., `**A) # Correct`)
+- Explanations: Blockquote (`>`) on line following each option
+- Language: Russian
+- Content: Understanding-based (not memorization), using lecture examples
+
+**Validation Rules:**
+- 8-12 questions per quiz
+- 3-5 answer options per question
+- Exactly one correct answer per question
+- Every option must have an explanation blockquote
+- Explanations must reference specific lecture content
+
+### Webinar Upload Contract
+
+The `upload_webinar` and `upload_quiz` commands communicate with the snap-study API using multipart/form-data POST requests.
+
+**Webinar Upload (`upload_webinar`):**
+- **Endpoint**: Configurable via `EDU_PATH_API_ENDPOINT` env var
+- **Method**: POST
+- **Headers**: `Authorization: Bearer {EDU_PATH_TOKEN}`
+- **Form Data**:
+  - `title`: Webinar title
+  - `slug`: Unique identifier
+  - `summary`: Short summary text (optional)
+  - `long_summary`: Full article text (optional)
+- **Files**:
+  - `video_file`: Video file (required)
+  - `poster_file`: Thumbnail image (optional, defaults to `posters/poster.jpg`)
+  - `transcript_file`: Transcript JSON (optional, defaults to `transcript.json`)
+- **Success**: HTTP 201
+
+**Quiz Upload (`upload_quiz`):**
+- **Endpoint**: Configurable, defaults to specific snap-study URL
+- **Method**: POST
+- **Headers**: `Authorization: Bearer {EDU_PATH_TOKEN}`
+- **Form Data**:
+  - `slug`: Webinar identifier
+  - `content`: Quiz markdown content (see Quiz Format Contract above)
+- **Success**: HTTP 201
+
+**Note**: Upload commands are coupled to HSE's snap-study infrastructure and will be migrated to the website project in the future.

@@ -1,6 +1,6 @@
 """Base command class with common functionality for CLI commands."""
 
-import os
+import json
 from typing import Optional
 import click
 
@@ -74,28 +74,7 @@ class BaseCommand:
                 raise click.Abort()
         else:
             click.echo(content)
-
-    @staticmethod
-    def validate_env_var(var_name: str, required: bool = True) -> Optional[str]:
-        """
-        Validate environment variable exists.
-
-        Args:
-            var_name: Name of the environment variable
-            required: If True, aborts when variable is not set
-
-        Returns:
-            The environment variable value or None if not set and not required
-
-        Raises:
-            click.Abort: If variable is required but not set
-        """
-        value = os.getenv(var_name)
-        if required and value is None:
-            click.echo(click.style(f'Error: {var_name} is not set', fg='red'))
-            raise click.Abort()
-        return value
-
+ 
     @staticmethod
     def load_json_file(file_path: str) -> dict:
         """
@@ -112,7 +91,6 @@ class BaseCommand:
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                import json
                 return json.load(f)
         except FileNotFoundError:
             click.echo(click.style(f'Error: File not found at {file_path}', fg='red'))

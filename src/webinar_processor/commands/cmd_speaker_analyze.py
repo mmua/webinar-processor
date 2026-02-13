@@ -257,6 +257,6 @@ def analyze(directory: str, gap_threshold: float, min_duration: float, max_durat
     
     click.echo(f"\nDone! Created {len(consolidated)} speaker entries with {total_samples_created} samples")
     click.echo(f"Saved to: {analysis_path}")
-    click.echo(f"\nNext steps:")
+    click.echo("\nNext steps:")
     click.echo(f"  1. Run 'webinar_processor speakers label {directory}' to label speakers")
     click.echo(f"  2. Run 'webinar_processor speakers identify {directory}' to identify speakers")

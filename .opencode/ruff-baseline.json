@@ -1,0 +1,5 @@
+{
+  "tool": "ruff",
+  "command": "ruff check . --output-format json",
+  "total_violations": 0
+}
