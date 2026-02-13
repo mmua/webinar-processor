@@ -13,8 +13,8 @@ def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
 
     hf_token = os.getenv("HUGGING_FACE_TOKEN")
     if hf_token is None:
-        click.echo(click.style('Error: HuggingFace token is not set', fg='red'))
-        raise click.Abort
+        click.echo(click.style('Error: HUGGING_FACE_TOKEN is not set', fg='red'))
+        raise click.Abort()
 
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1",

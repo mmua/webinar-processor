@@ -207,9 +207,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                result = client.extract_speaker_name("Hi, I'm John Smith")
+                result = extract_speaker_name("Hi, I'm John Smith", client=client)
 
                 assert result == "John Smith"
 
@@ -222,9 +223,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                result = client.extract_speaker_name("My name is Jane Doe")
+                result = extract_speaker_name("My name is Jane Doe", client=client)
 
                 assert result == "Jane Doe"
 
@@ -237,9 +239,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                result = client.extract_speaker_name("This is Bob Johnson")
+                result = extract_speaker_name("This is Bob Johnson", client=client)
 
                 assert result == "Bob Johnson"
 
@@ -255,9 +258,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                result = client.extract_speaker_name("No introduction here")
+                result = extract_speaker_name("No introduction here", client=client)
 
                 assert result is None
 
@@ -268,9 +272,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                result = client.extract_speaker_name("Hi, I'm Alice")
+                result = extract_speaker_name("Hi, I'm Alice", client=client)
 
                 assert result is None
 
@@ -283,9 +288,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                result = client.extract_speaker_name("Some text")
+                result = extract_speaker_name("Some text", client=client)
 
                 assert result is None
 
@@ -294,9 +300,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                client.extract_speaker_name("Test text content")
+                extract_speaker_name("Test text content", client=client)
 
                 call_args = mock_openai_client.chat.completions.create.call_args
                 prompt = call_args[1]["messages"][0]["content"]
@@ -311,9 +318,10 @@ class TestLLMClient:
         with patch.dict("os.environ", {"LLM_API_KEY": "test-key"}):
             with patch("openai.OpenAI", return_value=mock_openai_client):
                 from webinar_processor.llm.client import LLMClient
+                from webinar_processor.services.speaker_name_extractor import extract_speaker_name
 
                 client = LLMClient()
-                client.extract_speaker_name("Test text")
+                extract_speaker_name("Test text", client=client)
 
                 call_args = mock_openai_client.chat.completions.create.call_args
                 assert call_args[1]["max_completion_tokens"] == 50

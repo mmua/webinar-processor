@@ -81,13 +81,6 @@ def mock_youtube():
     return mock
 
 @pytest.fixture
-def mock_sbert_punc():
-    """Mock SbertPuncCase for text punctuation."""
-    mock = MagicMock()
-    mock.punctuate.return_value = "Test punctuated text."
-    return mock
-
-@pytest.fixture
 def sample_audio_file(temp_dir):
     """Create a sample audio file for testing."""
     audio_path = temp_dir / "test_audio.wav"

@@ -1,7 +1,10 @@
+import logging
 import sqlite3
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 EMBEDDING_DIM = 256
 EMBEDDING_DTYPE = np.float32
@@ -28,10 +31,8 @@ class SpeakerDatabase:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS speakers (
                     speaker_id TEXT PRIMARY KEY,
-                    canonical_name TEXT,
                     inferred_name TEXT,
                     confirmed_name TEXT,
-                    gender TEXT,
                     voice_embedding BLOB,
                     num_samples INTEGER DEFAULT 1,
                     first_detected TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -59,13 +60,15 @@ class SpeakerDatabase:
     def _validate_and_prepare_embedding(self, voice_embedding: np.ndarray) -> Optional[np.ndarray]:
         """Validate and prepare embedding for storage."""
         if not isinstance(voice_embedding, np.ndarray):
-            print("Error: voice_embedding must be a numpy array.")
+            logger.error("voice_embedding must be a numpy array.")
             return None
         if voice_embedding.ndim == 0:
-            print(f"Error: voice_embedding is a 0-dim array ({voice_embedding.item()}), expected {EMBEDDING_DIM} dimensions.")
+            logger.error("voice_embedding is a 0-dim array (%s), expected %d dimensions.",
+                         voice_embedding.item(), EMBEDDING_DIM)
             return None
         if voice_embedding.size != EMBEDDING_DIM:
-            print(f"Error: voice_embedding has {voice_embedding.size} elements, expected {EMBEDDING_DIM}.")
+            logger.error("voice_embedding has %d elements, expected %d.",
+                         voice_embedding.size, EMBEDDING_DIM)
             return None
         return voice_embedding.astype(EMBEDDING_DTYPE).reshape((EMBEDDING_DIM,))
 
@@ -74,7 +77,6 @@ class SpeakerDatabase:
                     voice_embedding: np.ndarray,
                     inferred_name: Optional[str] = None,
                     confirmed_name: Optional[str] = None,
-                    gender: Optional[str] = None,
                     confidence_score: float = 0.0,
                     num_samples: int = 1,
                     notes: Optional[str] = None) -> bool:
@@ -90,27 +92,26 @@ class SpeakerDatabase:
 
                 cursor.execute("""
                     INSERT INTO speakers (
-                        speaker_id, inferred_name, confirmed_name, gender,
+                        speaker_id, inferred_name, confirmed_name,
                         voice_embedding, confidence_score, num_samples, notes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (speaker_id, inferred_name, confirmed_name, gender,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (speaker_id, inferred_name, confirmed_name,
                       embedding_bytes, confidence_score, num_samples, notes))
 
                 conn.commit()
                 return True
 
         except sqlite3.IntegrityError:
-            print(f"Error: Speaker ID {speaker_id} already exists.")
+            logger.error("Speaker ID %s already exists.", speaker_id)
             return False
         except Exception as e:
-            print(f"Error adding speaker {speaker_id}: {str(e)}")
+            logger.error("Error adding speaker %s: %s", speaker_id, e)
             return False
 
     def update_speaker(self,
                        speaker_id: str,
                        confirmed_name: Optional[str] = None,
                        inferred_name: Optional[str] = None,
-                       gender: Optional[str] = None,
                        voice_embedding: Optional[np.ndarray] = None,
                        num_samples: Optional[int] = None,
                        notes: Optional[str] = None) -> bool:
@@ -129,10 +130,6 @@ class SpeakerDatabase:
                 if inferred_name is not None:
                     update_fields.append("inferred_name = ?")
                     params.append(inferred_name)
-
-                if gender is not None:
-                    update_fields.append("gender = ?")
-                    params.append(gender)
 
                 if voice_embedding is not None:
                     prepared_embedding = self._validate_and_prepare_embedding(voice_embedding)
@@ -165,7 +162,7 @@ class SpeakerDatabase:
                 return False
 
         except Exception as e:
-            print(f"Error updating speaker {speaker_id}: {str(e)}")
+            logger.error("Error updating speaker %s: %s", speaker_id, e)
             return False
 
     def _deserialize_embedding(self, embedding_bytes: Optional[bytes]) -> Optional[np.ndarray]:
@@ -176,7 +173,8 @@ class SpeakerDatabase:
         if embedding.size == EMBEDDING_DIM:
             return embedding.reshape((EMBEDDING_DIM,))
         else:
-            print(f"Warning: Stored embedding has unexpected size {embedding.size}, expected {EMBEDDING_DIM}. Skipping.")
+            logger.warning("Stored embedding has unexpected size %d, expected %d. Skipping.",
+                           embedding.size, EMBEDDING_DIM)
             return None
 
     def get_speaker(self, speaker_id: str) -> Optional[Dict]:
@@ -186,8 +184,8 @@ class SpeakerDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT speaker_id, canonical_name, inferred_name, confirmed_name,
-                           gender, voice_embedding, num_samples, first_detected,
+                    SELECT speaker_id, inferred_name, confirmed_name,
+                           voice_embedding, num_samples, first_detected,
                            last_updated, confidence_score, notes
                     FROM speakers
                     WHERE speaker_id = ?
@@ -201,14 +199,14 @@ class SpeakerDatabase:
                 return None
 
         except Exception as e:
-            print(f"Error retrieving speaker {speaker_id}: {str(e)}")
+            logger.error("Error retrieving speaker %s: %s", speaker_id, e)
             return None
 
     def find_matching_speaker(self, voice_embedding: np.ndarray, threshold: float = 0.7) -> Optional[Tuple[str, float]]:
         """Find a matching speaker in the database based on voice embedding."""
         target_embedding = self._validate_and_prepare_embedding(voice_embedding)
         if target_embedding is None:
-            print("Error: Invalid voice embedding provided for matching.")
+            logger.error("Invalid voice embedding provided for matching.")
             return None
 
         try:
@@ -237,7 +235,7 @@ class SpeakerDatabase:
                 return (best_match_id, float(highest_similarity)) if best_match_id else None
 
         except Exception as e:
-            print(f"Error finding matching speaker: {str(e)}")
+            logger.error("Error finding matching speaker: %s", e)
             return None
 
     def get_all_speakers(self) -> List[Dict]:
@@ -247,8 +245,8 @@ class SpeakerDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT s.speaker_id, s.canonical_name, s.inferred_name,
-                           s.confirmed_name, s.gender, s.voice_embedding,
+                    SELECT s.speaker_id, s.inferred_name,
+                           s.confirmed_name, s.voice_embedding,
                            s.num_samples, s.first_detected, s.last_updated,
                            s.confidence_score, s.notes,
                            COUNT(a.id) as appearance_count
@@ -265,7 +263,7 @@ class SpeakerDatabase:
                 return speakers
 
         except Exception as e:
-            print(f"Error retrieving all speakers: {str(e)}")
+            logger.error("Error retrieving all speakers: %s", e)
             return []
 
     def delete_speaker(self, speaker_id: str) -> bool:
@@ -278,7 +276,7 @@ class SpeakerDatabase:
                 conn.commit()
                 return cursor.rowcount > 0
         except Exception as e:
-            print(f"Error deleting speaker {speaker_id}: {str(e)}")
+            logger.error("Error deleting speaker %s: %s", speaker_id, e)
             return False
 
     def merge_speakers(self, source_id: str, target_id: str) -> bool:
@@ -288,10 +286,10 @@ class SpeakerDatabase:
             target = self.get_speaker(target_id)
 
             if not source:
-                print(f"Error: Source speaker {source_id} not found.")
+                logger.error("Source speaker %s not found.", source_id)
                 return False
             if not target:
-                print(f"Error: Target speaker {target_id} not found.")
+                logger.error("Target speaker %s not found.", target_id)
                 return False
 
             with sqlite3.connect(self.db_path) as conn:
@@ -342,7 +340,6 @@ class SpeakerDatabase:
                 """, update_params)
 
                 # Transfer appearances from source to target
-                # Use INSERT OR IGNORE to skip duplicates (unique constraint)
                 cursor.execute("""
                     INSERT OR IGNORE INTO speaker_appearances (speaker_id, transcript_path, audio_path, original_label)
                     SELECT ?, transcript_path, audio_path, original_label
@@ -357,7 +354,7 @@ class SpeakerDatabase:
                 return True
 
         except Exception as e:
-            print(f"Error merging speakers {source_id} -> {target_id}: {str(e)}")
+            logger.error("Error merging speakers %s -> %s: %s", source_id, target_id, e)
             return False
 
     def add_appearance(self, speaker_id: str, transcript_path: str,
@@ -375,7 +372,7 @@ class SpeakerDatabase:
                 conn.commit()
                 return True
         except Exception as e:
-            print(f"Error adding appearance for {speaker_id}: {str(e)}")
+            logger.error("Error adding appearance for %s: %s", speaker_id, e)
             return False
 
     def get_appearances(self, speaker_id: str) -> List[Dict]:
@@ -393,5 +390,5 @@ class SpeakerDatabase:
                 """, (speaker_id,))
                 return [dict(row) for row in cursor.fetchall()]
         except Exception as e:
-            print(f"Error getting appearances for {speaker_id}: {str(e)}")
+            logger.error("Error getting appearances for %s: %s", speaker_id, e)
             return []

@@ -1,345 +1,140 @@
 # Webinar Processor
 
-This project provides tools to process webinar recordings, including transcription, speaker diarization, and speaker identification.
+Turn webinar recordings into educational content: articles, summaries, and quizzes.
 
-## Features
+Webinar Processor takes a video file, transcribes it with speaker diarization, then uses LLMs to generate structured educational materials. It powers the content pipeline for [snap-study.ru](https://snap-study.ru).
 
-*   Download video from YouTube.
-*   Transcribe audio/video files (e.g., using OpenAI Whisper) to create subtitles.
-*   Perform speaker diarization to identify who spoke when.
-*   Identify known speakers using voice embeddings and a speaker database.
-*   Manage speaker profiles with manual gender labeling.
-*   Create a streaming video player with synchronized subtitles (clicking on text navigates video).
-*   Generate a text summary of the video content.
-*   Detect slides within the video and integrate them into the subtitles/transcript.
-*   A speaker database to manage known speaker profiles.
+## What it does
 
-## Voice Embedding Standard
+- **Transcribe** video with speaker diarization (Whisper + pyannote)
+- **Generate articles** from transcripts using an outline-first strategy with prompt caching
+- **Create summaries** (500-1000 word overviews)
+- **Generate quizzes** with explanations for each answer
+- **Identify speakers** across webinars using voice embeddings
+- **Extract poster frames** from video
 
-For consistent speaker identification and matching, this project adheres to a specific voice embedding standard:
+## Quick start
 
-*   **Model**: `speechbrain/spkrec-ecapa-voxceleb`
-*   **Dimension**: 192
-*   **Data Type**: `numpy.float32`
+```bash
+# Install into a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
 
-All voice embeddings stored in the speaker database and used for comparison are expected to conform to this standard. The `VoiceEmbeddingService` is responsible for generating these embeddings, and the `SpeakerDatabase` service ensures they are stored and retrieved in this format.
+# Set up API keys
+cp .env.example .env
+# Edit .env with your LLM API key
 
-## Setup
+# Generate an article from a transcript
+webinar_processor storytell transcript.json --output-file article.txt
 
-To set up the project, follow these steps:
+# Generate a summary
+webinar_processor summarize transcript.json --output-file summary.txt
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd webinar-processor
-    ```
-2.  **Create a virtual environment:**
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt 
-    # Or, if you use Poetry or another dependency manager, add respective commands.
-    ```
-4.  **Set up any required API keys or configurations:**
-    Create a `.env` file based on `.env.example` (if available) and fill in necessary credentials for services like OpenAI, AWS, etc.
-
-## Usage
-
-This project provides a Command Line Interface (CLI) for its various functionalities. Below are some examples. For a full list of commands and their options, use the `--help` flag with each command (e.g., `webinar_processor yt-download --help`).
-
-See the "Работа с webinar_processor" section further down for specific command examples.
-
-## Project Structure
-
-A typical project structure might look like this:
-
-```
-webinar-processor/
-├── webinar_processor/    # Main application package
-│   ├── commands/         # CLI command modules
-│   ├── services/         # Core services (transcription, diarization, etc.)
-│   ├── utils/            # Utility functions
-│   └── main.py           # Main CLI entry point (e.g., using Typer or Click)
-├── tests/                # Test suite
-├── data/                 # For storing input/output data, models, etc.
-│   ├── audio/
-│   ├── video/
-│   └── speaker_database/
-├── conf/                 # Configuration files, prompts
-├── docs/                 # Project documentation
-├── scripts/              # Helper scripts (e.g., for setup, deployment)
-├── .env.example          # Example environment variables file
-├── .gitignore
-├── LICENSE
-├── README.md
-└── requirements.txt      # Python package dependencies
+# Generate a quiz
+webinar_processor quiz transcript.json --output-file quiz.txt
 ```
 
-## Contributing
+## Full pipeline
 
-Contributions are welcome! If you'd like to contribute, please follow these general guidelines:
+```bash
+# 1. Download video
+webinar_processor download https://youtu.be/VIDEO_ID -o video/
 
-1.  **Fork the repository.**
-2.  **Create a new branch** for your feature or bug fix: `git checkout -b feature/your-feature-name` or `git checkout -b fix/your-bug-fix`.
-3.  **Make your changes.** Ensure your code adheres to the project's coding style (e.g., use a linter like Flake8 or Pylint, and a formatter like Black or Ruff).
-4.  **Write tests** for your changes. Ensure all tests pass.
-5.  **Commit your changes** with a clear and descriptive commit message.
-6.  **Push your branch** to your fork: `git push origin feature/your-feature-name`.
-7.  **Create a Pull Request** to the main repository.
+# 2. Transcribe with speaker diarization
+webinar_processor transcribe video/recording.mp4
 
-If you're planning a larger contribution, it's a good idea to open an issue first to discuss your ideas.
+# 3. Extract poster frame
+./poster.sh video/recording.mp4
 
-## Введение
-За основу взят пост https://vas3k.club/post/18916/#2-Ustanavlivaem-bibliot
+# 4. Generate content
+webinar_processor storytell video/transcript.json --output-file video/story.txt
+webinar_processor summarize video/transcript.json --output-file video/summary.txt
+webinar_processor quiz video/transcript.json --output-file video/quiz.txt
 
-Первый опыт был позитивный, но на одном из видео whisper.cpp зациклился и сошел с ума. Как вариант, можно было бы нарезать аудио на сегменты, но стандартный whisper с задачей справился гораздо лучше. Поэтому решено было использовать его. Для ускорения - использовать aws g5 ноду.
-
-Диаризация спикеров делается с помощью pyannote - https://github.com/yinruiqing/pyannote-whisper
-
-Любопытно будет повторить: https://github.com/pyannote/pyannote-audio/blob/develop/tutorials/adapting_pretrained_pipeline.ipynb
-
-## Example
-"Коучинговый стиль управления как инструмент современного руководителя"
-
-https://youtu.be/mKqDUYekM3M
-
-## Download video from youtube
-
-```
-$ webinar_processor yt-download --help
-Usage: webinar_processor yt-download [OPTIONS] URL PATH
-
-  Downloads YouTube streams to specified directory
-
-Options:
-  --help  Show this message and exit.
-
+# 5. Upload to platform
+webinar_processor upload-webinar video/recording.mp4 --title "Lecture Title" --slug lecture-1
+webinar_processor upload-quiz video/quiz.txt lecture-1
 ```
 
-## Транскрипция записи
-### Install whisper.cpp
+## Transcript formats
 
-```
-git clone https://github.com/ggerganov/whisper.cpp.git && cd whisper.cpp
-mkdir build && cd build && cmake .. && make
-./models/download-ggml-model.sh large
-```
+Two formats are accepted:
 
-### Подготовка аудио-дорожки
-
-```
-ffmpeg -i video/coaching/Коучинг\ как\ инструмент\ руководителя.mp4 -ar 16000  audio/Коучинг\ как\ инструмент\ руководителя.wav
+**Diarized** (from `transcribe` command): JSON array of segments with timestamps and speakers.
+```json
+[{"start": 0.0, "end": 5.2, "speaker": "SPEAKER_00", "text": "Hello everyone..."}]
 ```
 
-### Распознавание
-
-```
-time ./build/bin/main -m models/ggml-large.bin -l ru --no-timestamps -f Коучинг\ как\ инструмент\ руководителя.wav -of Коучинг\ как\ инструмент\ руководителя -otxt
-```
-
-## Транскрипция с аннотированием
-### Установка пакетов python
-
-```
-pip3 install openai-whisper pywhispercpp pyannote-audio
+**ASR** (flat text): JSON object with a `text` field.
+```json
+{"text": "Hello everyone, today we will discuss..."}
 ```
 
-# Работа с webinar_processor
-```
-```
+## Speaker identification
 
-## Загрузка видео
-webinar_processor yt-download https://youtu.be/mKqDUYekM3M video/coaching/
+Manage a persistent speaker database to identify recurring speakers across webinars:
 
-## Транскрипция с диаризацией
-webinar_processor transcribe video/coaching/Коучинг\ как\ инструмент\ руководителя.mp4 
+```bash
+# Analyze a webinar for speaker voice samples
+webinar_processor speakers analyze video/
 
-## Отправка вебинара на сайт
+# Interactively label speakers (listen to samples, assign names)
+webinar_processor speakers label video/
 
-## Создание текста вебинара из транскрипции
-```
-webinar_processor storytell video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
-```
+# Identify speakers in a new webinar using the reference library
+webinar_processor speakers identify new-video/
 
-Or single-pass mode:
-```
-webinar_processor storytell --single-pass video/03-gm/transcript.json.asr --output-file video/03-gm/webinar-text.txt
-```
+# Apply identified names to the transcript
+webinar_processor speakers apply new-video/
 
-
-
-## Создание краткого резюме
-Создайте краткое резюме вебинара:
-```
-webinar_processor summarize video/04-gm/transcript.json.asr --output-file video/04-gm/summary.txt
+# Manual speaker management
+webinar_processor speakers list
+webinar_processor speakers enroll --name "Dr. Smith" --audio sample.wav
+webinar_processor speakers info spk_a1b2c3d4
+webinar_processor speakers merge spk_old spk_new
 ```
 
-# Идеи по улучшению качества
-Существующие проблемы:
-* ошибки в распознавании речи
-* ошибки в диаризации
+## Configuration
 
-## Ошибки в распознавании речи
-* Препроцессинг аудио
-* Fine-tuning модели whisper
-* Прогон результатов через ChatGPT для исправления ошибок
+LLM models are configured via environment variables:
 
-## Ошибки в диаризации
-*   Подготовка embedding-ов известных нам спикеров
-*   Подбор моделей embedding-ов
-
-# Запуск на EC2
-
-Кодирование видео на процессоре занимает x3-x6 реального времени. Для ускорения получения результата предполагается использовать EC2 instance g5.4xlarge.
-
-## 1. Установка aws cli
-https://aws.amazon.com/cli/
-
-```
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-aws --version
+```bash
+LLM_API_KEY=your_key            # Required
+LLM_BASE_URL=https://api.openai.com/v1  # Default
+LLM_DEFAULT_MODEL=gpt-5-mini    # Fallback model
+LLM_STORY_MODEL=gpt-5.2         # Per-task override
+LLM_SUMMARIZATION_MODEL=gpt-5-mini
+LLM_QUIZ_MODEL=gpt-5.2
 ```
 
-## 2. Set Up IAM User
+Priority: task-specific env var > `LLM_DEFAULT_MODEL` > hardcoded defaults.
 
-It's not a good practice to use the root account for AWS operations. Instead, create an IAM (Identity and Access Management) user with the necessary permissions.
+## How article generation works
 
-1. **Login to the AWS Management Console** and navigate to the **IAM dashboard**.
-2. Click on **Users** and then **Add user**.
-3. Provide a username and select **Programmatic access**.
-4. Click **Next** and attach necessary permissions. For simplicity and to only manage EC2, attach the **AmazonEC2FullAccess** policy. (Remember to follow the principle of least privilege in real-world applications.)
-6. Complete the user creation. At the end of this process, you'll be provided an **Access Key ID** and a **Secret Access Key**. Keep these credentials secure and do not share them.
+The `storytell` command uses an outline-first strategy optimized for prompt caching:
 
-## 3. Using Temporary Session Tokens
-For a secure way to provide credentials for only a session, use **AWS's Security Token Service (STS)** to generate temporary session tokens.
+1. **Outline call**: LLM generates a JSON outline (sections + terminology) from the full transcript
+2. **Section calls**: Each section is written separately, all sharing an identical prompt prefix (transcript + outline + terms)
+3. **Appendix call**: Key terms and references, same cached prefix
 
-First, configure AWS CLI with the IAM user credentials you just created:
-```
-aws configure
-```
+Because calls 2-N share a byte-identical prefix, the API caches the transcript at 1/10th cost after the first section call. A 2-hour lecture costs roughly the same as processing the transcript once.
 
-Use the `sts get-session-token` command:
-```
-aws sts get-session-token --duration-seconds 3600
-```
+For transcripts that exceed the model's context window, the system automatically condenses into chunks first, then runs the outline strategy on the condensed notes.
 
-This command will return temporary credentials that last for an hour (3600 seconds). The output will include a temporary access key, secret access key, session token, and expiration.
+## Development
 
-Set these temporary credentials as environment variables:
-```
-export AWS_ACCESS_KEY_ID=YOUR_TEMP_ACCESS_KEY
-export AWS_SECRET_ACCESS_KEY=YOUR_TEMP_SECRET_ACCESS_KEY
-export AWS_SESSION_TOKEN=YOUR_TEMP_SESSION_TOKEN
+```bash
+# Run tests
+python -m pytest
+
+# Run linter
+ruff check src/
+
+# Install in development mode
+pip install -e .
 ```
 
-Now, any AWS CLI command you run in this session will use these temporary credentials.
+## License
 
-Here is bash script to interactive read secrets
-
-```
-#!/bin/bash
-
-echo "Enter AWS Access Key ID:"
-read -r AWS_ACCESS_KEY_ID
-
-echo "Enter AWS Secret Access Key:"
-read -rs AWS_SECRET_ACCESS_KEY
-
-# Exporting the credentials as environment variables
-export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
-
-# Changing the prompt
-export PS1="\[\033[36m\][AWS-TEMP-CREDS]\[\033[m\] \[\033[32m\]\w\[\033[m\] $ "
-
-# Spawning a new shell with the custom prompt
-bash --norc
-```
-
-## 4. Import ssh public key for EC2 instances
-```
-aws ec2 import-key-pair --key-name "my-key" --public-key-material fileb://~/.ssh/my-key.pub
-```
-
-## 5. Run EC2 Instance with custom image
-
-You need the Image ID (AMI ID) of the image you created. You can list all your available AMIs using:
-
-```
-aws ec2 describe-images --owners self
-```
-
-Launch the Instance:
-Use the run-instances command. Replace ami-xxxxxx with your AMI ID and your-key-name with your EC2 key pair name.
-
-```
-aws ec2 run-instances --image-id ami-xxxxxx --count 1 --instance-type g5.xlarge --key-name your-key-name
-```
-
-## Установка пакетов в образ
-
-```
-sudo apt install -y python3-venv ffmpeg
-```
-
-
-# Установка словарей spacy
-python -m spacy download en_core_web_sm
-python -m spacy download en_core_web_md
-python -m spacy download ru_core_news_md
-
-
-## Refactoring
-
-high-ROI refactoring opportunities:
-
-### 1. Command Naming Consistency
-- Some commands use cmd_ prefix (cmd_quiz.py) while others don't (transcribe.py, download.py)
-- High ROI because it improves maintainability and makes the codebase more predictable
-- Suggestion: Standardize on either using or not using the cmd_ prefix
-
-### 2. Configuration Management
-- Currently using .env for configuration but could benefit from a more structured approach
-- Consider introducing a dedicated config module with:
-- Default configurations
-- Environment-specific overrides
-- Type validation for config values
-- High ROI because it reduces runtime errors and makes configuration more maintainable
-
-### 3. Error Handling and Logging
-- Looking at the command files, there's opportunity to implement consistent error handling
-- Add structured logging throughout the application
-- High ROI because it makes debugging and monitoring much easier
-
-### 4. Testing Infrastructure
-- I notice a `tests` directory but would need to examine its contents
-- Consider adding:
-    - Unit test fixtures
-    - Integration tests for commands
-    - Mock responses for external services (OpenAI, etc.)
-- High ROI because it ensures reliability and makes future changes safer
-
-### 5. Dependencies Isolation
-- The OpenAI and other external service integrations could be better isolated
-- Consider implementing a service layer pattern
-- High ROI because it makes the codebase more maintainable and easier to update when APIs change
-
-### 6. Command Pattern Standardization
-- Looking at various command files, there's opportunity to standardize their structure
-- Consider introducing a base command class with common functionality
-- High ROI because it reduces code duplication and makes adding new commands easier
-
-### 7. Type Hints and Documentation
-- Add type hints throughout the codebase
-- Improve function and class documentation
-- High ROI because it improves code maintainability and helps catch errors early
-
-### 8. Utils Module Organization
-- The utils directory could be better organized by functionality
-- Consider breaking it into more specific modules (e.g., io, text, media)
-- High ROI because it makes the codebase more navigable
+MIT. See [LICENSE](LICENSE).

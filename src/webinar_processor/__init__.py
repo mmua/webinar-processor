@@ -2,6 +2,8 @@
 
 """Top-level package for Webinar Processor App"""
 
+import logging
+
 import click
 from dotenv import find_dotenv, load_dotenv
 
@@ -9,11 +11,15 @@ from webinar_processor import commands
 
 
 __author__ = """Maxim Moroz"""
-__email__ = 'mimoroz@edu.hse.ru'
+__email__ = 'mmua@users.noreply.github.com'
 __version__ = '0.9.0'
 
 
 _ = load_dotenv(find_dotenv())
+
+# Show service-layer log messages (INFO+) in the terminal.
+# format='%(message)s' gives clean output without logger-name prefixes.
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
 @click.group()
@@ -25,7 +31,6 @@ def cli():
 cli.add_command(commands.download)
 cli.add_command(commands.transcribe)
 cli.add_command(commands.diarize)
-cli.add_command(commands.poster)
 cli.add_command(commands.upload_webinar)
 cli.add_command(commands.summarize)
 cli.add_command(commands.storytell)
