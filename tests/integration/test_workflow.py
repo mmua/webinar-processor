@@ -25,8 +25,6 @@ Testing approach:
 4. Verify outputs at each stage
 """
 
-import pytest
-import os
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 from webinar_processor import cli

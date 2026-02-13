@@ -18,7 +18,6 @@ Each test verifies:
 - Proper return codes in success and failure cases
 """
 
-import pytest
 from unittest.mock import patch
 from click.testing import CliRunner
 from webinar_processor.commands.cmd_yt_download import download

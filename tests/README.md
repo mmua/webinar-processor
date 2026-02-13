@@ -58,10 +58,10 @@ python -m pytest
 python -m pytest -v
 
 # Run specific test module
-python -m pytest tests/utils/test_path.py
+python -m pytest tests/commands/test_speakers.py
 
 # Run a specific test
-python -m pytest tests/utils/test_path.py::test_ensure_dir_exists
+python -m pytest tests/commands/test_speakers.py::TestListCommand
 
 # Run with coverage report
 python -m pytest --cov=webinar_processor

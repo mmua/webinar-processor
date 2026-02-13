@@ -2,19 +2,16 @@
 Package Resource Tests
 =====================
 
-This module tests the package resource handling functions.
+This module tests of package resource handling functions.
 
 Test Verification Strategy
 -------------------------
 - Verify that configuration files can be located in resources
-- Test the resource loading for both config and model files
 - Verify paths are returned even for non-existent resources
 """
 
 import os
-import pytest
-from pathlib import Path
-from webinar_processor.utils.package import get_config_path, get_model_path
+from webinar_processor.utils.package import get_config_path
 
 def test_get_config_path():
     """
@@ -37,22 +34,6 @@ def test_get_config_path():
         assert path, f"Failed to get path for {filename}"
         assert os.path.isabs(path), f"Path should be absolute: {path}"
         assert os.path.exists(path), f"File should exist at {path}"
-
-
-def test_get_model_path():
-    """
-    Test the get_model_path function.
-    
-    Verification:
-    1. It should return a valid path even for non-existent models
-    2. The returned path should be absolute
-    """
-    # Since model files are large and might not be in the test environment,
-    # we just check that the function returns an absolute path
-    path = get_model_path("test_model.bin")
-    assert path, "Should return a path even for non-existent models"
-    assert os.path.isabs(path), f"Path should be absolute: {path}"
-
 
 def test_nonexistent_resource():
     """

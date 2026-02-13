@@ -1,7 +1,7 @@
 import click
 import json
 import uuid
-from typing import Optional, List, Dict, Tuple
+from typing import List, Dict, Optional
 import os
 from webinar_processor.llm import LLMClient, LLMError
 
@@ -39,7 +39,6 @@ def list_speakers(json_output: bool):
                 'speaker_id': s['speaker_id'],
                 'confirmed_name': s.get('confirmed_name'),
                 'inferred_name': s.get('inferred_name'),
-                'gender': s.get('gender'),
                 'first_detected': s.get('first_detected'),
                 'num_samples': s.get('num_samples', 1),
                 'appearance_count': s.get('appearance_count', 0),
@@ -49,12 +48,12 @@ def list_speakers(json_output: bool):
             output.append(entry)
         click.echo(json.dumps(output, indent=2, ensure_ascii=False))
         return
-
+ 
     # Table output
-    header = f"{'ID':<16} {'Name':<24} {'Gender':<8} {'First Seen':<12} {'Appearances':<13} {'Confidence'}"
+    header = f"{'ID':<16} {'Name':<32} {'First Seen':<12} {'Appearances':<13} {'Confidence'}"
     click.echo(header)
     click.echo("-" * len(header))
-
+ 
     for s in all_speakers:
         # Display name: confirmed (C) > inferred (I) > ID
         name = s.get('confirmed_name')
@@ -65,26 +64,24 @@ def list_speakers(json_output: bool):
         if not name:
             name = s['speaker_id']
             name_tag = ''
-
+ 
         display_name = f"{name} {name_tag}".strip()
-        if len(display_name) > 22:
-            display_name = display_name[:19] + "..."
-
-        gender = s.get('gender') or '-'
+        if len(display_name) > 30:
+            display_name = display_name[:27] + "..."
+ 
         first_seen = (s.get('first_detected') or '')[:10]
         appearances = s.get('appearance_count', 0)
         confidence = s.get('confidence_score', 0.0) or 0.0
-
-        click.echo(f"{s['speaker_id']:<16} {display_name:<24} {gender:<8} {first_seen:<12} {appearances:<13} {confidence:.2f}")
+ 
+        click.echo(f"{s['speaker_id']:<16} {display_name:<32} {first_seen:<12} {appearances:<13} {confidence:.2f}")
 
 
 @speakers.command()
 @click.option('--name', required=True, help='Speaker name')
 @click.option('--audio', required=True, type=click.Path(exists=True), help='Audio file for voice enrollment')
-@click.option('--gender', type=click.Choice(['male', 'female', 'unknown']), help='Speaker gender')
 @click.option('--min-duration', type=float, default=3.0, help='Minimum audio duration in seconds')
 @click.option('--notes', help='Additional notes about the speaker')
-def enroll(name: str, audio: str, gender: Optional[str], min_duration: float, notes: Optional[str]):
+def enroll(name: str, audio: str, min_duration: float, notes: Optional[str]):
     """Enroll a new speaker from an audio file."""
     from webinar_processor.services.speaker_database import SpeakerDatabase
     from webinar_processor.services.voice_embedding_service import VoiceEmbeddingService
@@ -116,7 +113,6 @@ def enroll(name: str, audio: str, gender: Optional[str], min_duration: float, no
         speaker_id=speaker_id,
         voice_embedding=embedding,
         confirmed_name=name,
-        gender=gender,
         confidence_score=1.0,
         notes=notes,
     )
@@ -197,21 +193,19 @@ def merge(source_id: str, target_id: str):
 @speakers.command()
 @click.argument('speaker_id')
 @click.option('--name', help='Manually confirm speaker name')
-@click.option('--gender', type=click.Choice(['male', 'female', 'unknown']), help='Set speaker gender')
 @click.option('--notes', help='Set notes for the speaker')
-def update(speaker_id: str, name: Optional[str], gender: Optional[str], notes: Optional[str]):
+def update(speaker_id: str, name: Optional[str], notes: Optional[str]):
     """Update speaker information."""
     from webinar_processor.services.speaker_database import SpeakerDatabase
     db = SpeakerDatabase()
 
-    if not name and not gender and notes is None:
-        click.echo("Please provide at least one update (--name, --gender, or --notes)")
+    if not name and notes is None:
+        click.echo("Please provide at least one update (--name or --notes)")
         return
 
     success = db.update_speaker(
         speaker_id=speaker_id,
         confirmed_name=name,
-        gender=gender,
         notes=notes,
     )
 
@@ -236,7 +230,6 @@ def info(speaker_id: str):
     click.echo(f"Speaker ID: {speaker['speaker_id']}")
     click.echo(f"Confirmed Name: {speaker.get('confirmed_name') or 'Not set'}")
     click.echo(f"Inferred Name: {speaker.get('inferred_name') or 'Not set'}")
-    click.echo(f"Gender: {speaker.get('gender') or 'Unknown'}")
     click.echo(f"Samples: {speaker.get('num_samples', 1)}")
     click.echo(f"First Detected: {speaker.get('first_detected')}")
     click.echo(f"Last Updated: {speaker.get('last_updated')}")
@@ -416,10 +409,10 @@ def relabel(transcript_path: str, audio_path: str, output_path: Optional[str],
 
 
 # Import and register new speaker commands
-from .cmd_speaker_analyze import analyze as speaker_analyze
-from .cmd_speaker_label import label as speaker_label
-from .cmd_speaker_identify import identify as speaker_identify
-from .cmd_speaker_apply import apply as speaker_apply
+from .cmd_speaker_analyze import analyze as speaker_analyze  # noqa: E402
+from .cmd_speaker_label import label as speaker_label  # noqa: E402
+from .cmd_speaker_identify import identify as speaker_identify  # noqa: E402
+from .cmd_speaker_apply import apply as speaker_apply  # noqa: E402
 
 speakers.add_command(speaker_analyze)
 speakers.add_command(speaker_label)

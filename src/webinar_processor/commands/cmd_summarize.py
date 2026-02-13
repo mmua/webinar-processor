@@ -78,7 +78,6 @@ def storytell(asr_file: str, model: str, output_file: str, no_appendix: bool, si
     """
     from webinar_processor.utils.transcript_formatter import (
         is_diarized_format, format_diarized_transcript, add_paragraph_breaks,
-        split_segments_by_time,
     )
 
     data = BaseCommand.load_json_file(asr_file)
@@ -333,7 +332,7 @@ def _storytell_chunked(text: str, segments, model: str, no_appendix: bool = Fals
     4. Write sections from condensed notes with outline context
     """
     from webinar_processor.utils.transcript_formatter import (
-        format_diarized_transcript,
+        format_diarized_transcript, split_segments_by_time,
     )
 
     condense_prompt = BaseCommand.load_prompt_template(

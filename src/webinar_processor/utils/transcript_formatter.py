@@ -2,8 +2,7 @@
 
 import re
 import logging
-from collections import Counter
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from pyannote.audio import Audio
 from pyannote.core import Segment
 from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbedding

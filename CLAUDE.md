@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ../venv/bin/python -m pytest -k "test_get_api_key"        # by pattern
 ```
 
-Known pre-existing failures (not ours): `test_generate_token_limit_exceeded`, `test_ensure_dir_exists`, `test_voice_*`.
+Known pre-existing failures (not ours): `test_generate_token_limit_exceeded`.
 
 ## Architecture
 

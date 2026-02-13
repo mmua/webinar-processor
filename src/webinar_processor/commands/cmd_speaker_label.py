@@ -1,7 +1,6 @@
 import click
 import json
 import os
-from pathlib import Path
 
 from webinar_processor.services.speaker_database import SpeakerDatabase
 from webinar_processor.commands.cmd_speaker_analyze import decode_embedding
@@ -67,7 +66,7 @@ def label(directory):
         return
     
     click.echo(f"Found {len(unlabeled)} unlabeled speakers in {directory}")
-    click.echo(f"Showing speakers sorted by duration (longest first)")
+    click.echo("Showing speakers sorted by duration (longest first)")
     click.echo("-" * 60)
     
     db = SpeakerDatabase()
@@ -107,12 +106,12 @@ def label(directory):
             click.echo(f"  # ffplay /tmp/sample{j}.wav")
         
         # Ask which samples are clean
-        click.echo(f"\n  Which samples are clean (single speaker only)?")
-        click.echo(f"  Enter sample numbers separated by commas (e.g., '1,2'), or:")
-        click.echo(f"    'all' = all samples are clean")
-        click.echo(f"    'none' = no clean samples (skip this speaker)")
-        click.echo(f"    's' = skip this speaker for now")
-        click.echo(f"    'q' = quit")
+        click.echo("\n  Which samples are clean (single speaker only)?")
+        click.echo("  Enter sample numbers separated by commas (e.g., '1,2'), or:")
+        click.echo("    'all' = all samples are clean")
+        click.echo("    'none' = no clean samples (skip this speaker)")
+        click.echo("    's' = skip this speaker for now")
+        click.echo("    'q' = quit")
         
         clean_input = click.prompt("  Clean samples", default="1", show_default=False).strip()
         
@@ -177,8 +176,8 @@ def label(directory):
     if remaining > 0:
         click.echo(f"\n{remaining} speakers still unlabeled")
     else:
-        click.echo(f"\nAll speakers labeled!")
-        click.echo(f"Run 'webinar_processor speakers identify <other_directory>' to identify speakers in other webinars")
+        click.echo("\nAll speakers labeled!")
+        click.echo("Run 'webinar_processor speakers identify <other_directory>' to identify speakers in other webinars")
 
 
 def _add_speaker_to_db(db: SpeakerDatabase, name: str, samples: list):

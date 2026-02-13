@@ -64,7 +64,7 @@ def apply(directory: str, output_suffix: str):
             speaker_mapping[temp_id] = temp_id
             unlabeled_count += 1
     
-    click.echo(f"\nSpeaker mapping:")
+    click.echo("\nSpeaker mapping:")
     for temp_id, name in sorted(speaker_mapping.items()):
         if temp_id != name:
             status = "labeled" if temp_id in speakers and speakers[temp_id].get('labeled_name') else "identified"
@@ -102,11 +102,11 @@ def apply(directory: str, output_suffix: str):
     click.echo(f"Created: {output_path}")
     
     if unlabeled_count > 0:
-        click.echo(f"\nTo label remaining speakers:")
+        click.echo("\nTo label remaining speakers:")
         click.echo(f"  webinar_processor speakers label {directory}")
     
-    click.echo(f"\nTo process more webinars:")
-    click.echo(f"  webinar_processor speakers analyze <directory>")
-    click.echo(f"  webinar_processor speakers label <directory>  # for reference speakers")
-    click.echo(f"  webinar_processor speakers identify <directory>")
-    click.echo(f"  webinar_processor speakers apply <directory>")
+    click.echo("\nTo process more webinars:")
+    click.echo("  webinar_processor speakers analyze <directory>")
+    click.echo("  webinar_processor speakers label <directory>  # for reference speakers")
+    click.echo("  webinar_processor speakers identify <directory>")
+    click.echo("  webinar_processor speakers apply <directory>")

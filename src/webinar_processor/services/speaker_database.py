@@ -1,9 +1,7 @@
 import sqlite3
-import json
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 from pathlib import Path
-import os
 
 EMBEDDING_DIM = 256
 EMBEDDING_DTYPE = np.float32

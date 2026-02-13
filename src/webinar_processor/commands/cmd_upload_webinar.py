@@ -16,14 +16,14 @@ def upload_webinar(video_file, title, slug, poster_file, transcript_file, endpoi
     _ = load_dotenv(find_dotenv(usecwd=True))
     token = os.getenv("EDU_PATH_TOKEN", None)
     if token is None:
-        click.echo(click.style(f'Error: Access Token is not set', fg='red'))
+        click.echo(click.style('Error: Access Token is not set', fg='red'))
         raise click.Abort
 
     if endpoint is None:
         endpoint = os.getenv("EDU_PATH_API_ENDPOINT", None)
 
     if endpoint is None:
-        click.echo(click.style(f'Error: API Endpoint is not set', fg='red'))
+        click.echo(click.style('Error: API Endpoint is not set', fg='red'))
         raise click.Abort
 
     video_dir = os.path.dirname(video_file)

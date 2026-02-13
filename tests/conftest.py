@@ -40,10 +40,8 @@ For each test, the verification process should include:
 - Testing of edge cases and error conditions
 """
 
-import os
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def temp_dir(tmp_path):
