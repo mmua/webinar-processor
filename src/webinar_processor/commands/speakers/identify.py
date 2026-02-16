@@ -138,7 +138,6 @@ def identify(directory: str, threshold: float, min_matches: int, dry_run: bool):
     
     click.echo(f"\nFound {len(unlabeled)} speakers to identify")
     click.echo(f"Threshold: {threshold}, Min matches: {min_matches}")
-    click.echo("Note: Will only use samples marked as 'clean' (single speaker)")
     click.echo("-" * 60)
     
     identified_count = 0
@@ -148,13 +147,9 @@ def identify(directory: str, threshold: float, min_matches: int, dry_run: bool):
         duration = speaker_data['total_duration']
         all_samples = speaker_data.get('samples', [])
         
-        # Use only clean samples for matching
-        samples = [s for s in all_samples if s.get('is_clean', False)]
-        
-        if not samples and all_samples:
-            click.echo(f"\n  {temp_id}: No clean samples marked. Use 'label' command first to mark clean samples.")
-            uncertain_count += 1
-            continue
+        # Prefer clean samples, but fall back to all samples for identification
+        clean_samples = [s for s in all_samples if s.get('is_clean', False)]
+        samples = clean_samples if clean_samples else all_samples
         
         if not samples:
             uncertain_count += 1
