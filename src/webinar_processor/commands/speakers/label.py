@@ -54,15 +54,15 @@ def label(directory):
         click.echo("No speakers found in analysis")
         return
     
-    # Get unlabeled speakers sorted by duration
+    # Get unlabeled speakers sorted by duration (skip already identified ones)
     unlabeled = [
         (temp_id, data) for temp_id, data in speakers.items()
-        if data.get('labeled_name') is None
+        if data.get('labeled_name') is None and data.get('identified_name') is None
     ]
     unlabeled.sort(key=lambda x: x[1]['total_duration'], reverse=True)
     
     if not unlabeled:
-        click.echo("All speakers are already labeled!")
+        click.echo("All speakers are already labeled or identified!")
         return
     
     click.echo(f"Found {len(unlabeled)} unlabeled speakers in {directory}")
