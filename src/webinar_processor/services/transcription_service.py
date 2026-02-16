@@ -28,7 +28,7 @@ def transcribe_wav(wav_filename: str, language: str = "ru") -> Dict[str, Any]:
     normalized_language = _normalize_asr_language(language)
 
     torch_dtype = torch.float32
-    pipeline_device: Union[int, str] = -1
+    pipeline_device: Union[int, str] = "cpu"
 
     if torch.cuda.is_available():
         torch_dtype = torch.float16
@@ -50,7 +50,6 @@ def transcribe_wav(wav_filename: str, language: str = "ru") -> Dict[str, Any]:
         model=model,
         tokenizer=processor.tokenizer,
         feature_extractor=processor.feature_extractor,
-        max_new_tokens=256,
         chunk_length_s=30,
         batch_size=16 if pipeline_device == 0 else 4,
         return_timestamps=True,
