@@ -138,7 +138,7 @@ def _check_long_text_no_sentence_markers(seg_index: int, segments: list) -> Opti
 
 _ALLOWED_CHARS_RE = re.compile(
     r'[а-яА-ЯёЁa-zA-Z0-9\s'
-    r'.,!?;:\-—–()\[\]"\'«»…]'
+    r'.,!?;:\-—–()\[\]"\'«»…%]'
 )
 
 
@@ -294,26 +294,42 @@ def generate_report(
         lines.append(f"## {issue.issue_id}: {issue.rule_id.replace('_', ' ').title()} at {time_str}")
         lines.append("")
 
+        # Context for review
+        seg_idx = issue.segment_indices[0]
+        context_left = _get_context(segments, seg_idx, "left", count=2)
+        flagged_text = " ".join(
+            segments[i]["text"].strip() for i in issue.segment_indices if i < len(segments)
+        )
+        context_right = _get_context(segments, seg_idx, "right", count=2)
+
+        if context_left:
+            lines.append(f"> ...{context_left}")
+        lines.append(f"> **>>> {flagged_text} <<<**")
+        if context_right:
+            lines.append(f"> {context_right}...")
+        lines.append("")
+
         # Human-readable summary
         if issue.rule_id == "repetition_loop":
             if "repeated_phrase" in issue.evidence:
                 lines.append(
-                    f"Segment {issue.segment_indices[0]} contains repeated phrase "
-                    f"\"{issue.evidence['repeated_phrase']}\" ({issue.evidence['repeat_count']} times)."
+                    f"Repeated phrase \"{issue.evidence['repeated_phrase']}\" "
+                    f"({issue.evidence['repeat_count']} times)."
                 )
             elif "overlap_ratio" in issue.evidence:
                 lines.append(
-                    f"Segments {issue.segment_indices} have {issue.evidence['overlap_ratio']*100:.0f}% text overlap."
+                    f"{issue.evidence['overlap_ratio']*100:.0f}% text overlap with adjacent segment."
                 )
         elif issue.rule_id == "long_text_no_sentence_markers":
             lines.append(
-                f"Segment {issue.segment_indices[0]}: {issue.evidence['text_length']} chars with "
-                f"punctuation ratio {issue.evidence['punctuation_ratio']:.4f}."
+                f"{issue.evidence['text_length']} chars, punctuation ratio "
+                f"{issue.evidence['punctuation_ratio']:.4f}, capitalization ratio "
+                f"{issue.evidence['capitalization_ratio']:.4f}."
             )
         elif issue.rule_id == "out_of_alphabet_symbols":
             lines.append(
-                f"Segment {issue.segment_indices[0]}: {issue.evidence['symbol_ratio']*100:.1f}% "
-                f"unexpected symbols."
+                f"{issue.evidence['symbol_ratio']*100:.1f}% unexpected symbols: "
+                f"`{issue.evidence.get('unexpected_chars_sample', '')}`"
             )
 
         if issue.llm_verdict:
