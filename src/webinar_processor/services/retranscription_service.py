@@ -23,7 +23,6 @@ class RetranscriptionService:
         self.language = language
         self._whisper_model = None
         self._qwen3_model = None
-        self._qwen3_processor = None
 
     def _load_whisper(self):
         if self._whisper_model is None:
@@ -35,15 +34,14 @@ class RetranscriptionService:
 
     def _load_qwen3(self):
         if self._qwen3_model is None:
-            from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
-            model_id = "Qwen/Qwen3-ASR"
-            logger.info("Loading Qwen3-ASR...")
-            self._qwen3_processor = AutoProcessor.from_pretrained(model_id)
-            self._qwen3_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                model_id, device_map="cpu"
+            from qwen_asr import Qwen3ASRModel
+            logger.info("Loading Qwen3-ASR-1.7B...")
+            self._qwen3_model = Qwen3ASRModel.from_pretrained(
+                "Qwen/Qwen3-ASR-1.7B",
+                device_map="cpu",
             )
             logger.info("Qwen3-ASR model loaded")
-        return self._qwen3_model, self._qwen3_processor
+        return self._qwen3_model
 
     def transcribe_whisper(self, wav_path: str) -> str:
         model = self._load_whisper()
@@ -51,24 +49,13 @@ class RetranscriptionService:
         return result["text"].strip()
 
     def transcribe_qwen3(self, wav_path: str) -> str:
-        import torch
-        import soundfile as sf
-
-        model, processor = self._load_qwen3()
+        model = self._load_qwen3()
         lang_name = LANGUAGE_MAP.get(self.language, self.language)
 
-        audio_data, sample_rate = sf.read(wav_path)
-
-        prompt = f"<|startoftext|><|{lang_name}|>"
-        inputs = processor(
-            audio=audio_data,
-            sampling_rate=sample_rate,
-            text=prompt,
-            return_tensors="pt",
+        result = model.transcribe(
+            audio=wav_path,
+            language=lang_name,
+            return_time_stamps=False,
         )
-
-        with torch.no_grad():
-            generated_ids = model.generate(**inputs, max_new_tokens=512)
-
-        transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
-        return transcription[0].strip() if transcription else ""
+        text = (result[0].text or "").strip() if result else ""
+        return text

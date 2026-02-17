@@ -301,10 +301,10 @@ def fix_transcript(
         try:
             extract_audio_slice(media_path, wav_path, window.start_time, duration)
 
-            # Retranscribe
+            # Retranscribe (Qwen3 first — fail fast if model not available)
             logger.info("Retranscribing window %.1f-%.1f...", window.start_time, end_time)
-            whisper_text = retranscription.transcribe_whisper(wav_path)
             qwen3_text = retranscription.transcribe_qwen3(wav_path)
+            whisper_text = retranscription.transcribe_whisper(wav_path)
 
             # Judge each issue in this window
             for issue in window.issues:
