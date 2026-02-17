@@ -234,9 +234,11 @@ class TestVerifyTranscript:
         )
         assert "llm_verdict" in report
         assert mock_completion.called
+        # LLM-confirmed problems should be auto-accepted
+        assert '"accepted"' in report
 
     @patch('webinar_processor.services.transcript_verifier_service.get_completion')
-    def test_llm_no_problem_still_in_report(self, mock_completion):
+    def test_llm_no_problem_stays_open(self, mock_completion):
         mock_completion.return_value = json.dumps({
             "decision": "no_problem",
             "confidence": 0.8,
@@ -254,6 +256,8 @@ class TestVerifyTranscript:
         )
         assert "```transcript-issue" in report
         assert '"no_problem"' in report
+        # LLM says no_problem -> stays open, not auto-accepted
+        assert '"open"' in report
 
     @patch('webinar_processor.services.transcript_verifier_service.get_completion')
     def test_llm_unparseable_response_defaults_to_problem(self, mock_completion):

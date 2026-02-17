@@ -369,6 +369,10 @@ def verify_transcript(
     if issues and not no_llm:
         logger.info("Running LLM verification on %d candidates...", len(issues))
         issues = run_llm_verification(segments, issues, model)
+        # Auto-accept issues confirmed by LLM
+        for issue in issues:
+            if issue.llm_verdict and issue.llm_verdict.decision == "problem":
+                issue.status = "accepted"
 
     report = generate_report(transcript_path, media_path, segments, issues)
     return report
