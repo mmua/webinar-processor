@@ -20,6 +20,19 @@ def get_wav_filename(input_path: str, output_dir: str) -> str:
     wav_filename = f"{base_name}.wav"
     return os.path.join(output_dir, wav_filename)
 
+def extract_audio_slice(input_path: str, output_path: str, start_seconds: float, duration_seconds: float, sample_rate: int = 16000):
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", str(start_seconds),
+        "-t", str(duration_seconds),
+        "-i", input_path,
+        "-ar", str(sample_rate),
+        "-ac", "1",
+        output_path,
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+
+
 def convert_mp4_to_wav(input_path: str, output_path: str, sample_rate: int = 16000):
     cmd = [
         "ffmpeg",
