@@ -6,6 +6,8 @@ _DEFAULT_MODELS = {
     'quiz': 'gpt-5.2',
     'story': 'gpt-5.2',
     'speaker_extraction': 'gpt-5-mini',
+    'transcript_verification': 'gpt-5-mini',
+    'transcript_fix': 'gpt-5-mini',
     'default': 'gpt-5-mini',
 }
 
