@@ -22,10 +22,32 @@ def get_wav_filename(input_path: str, output_dir: str) -> str:
 
 def convert_mp4_to_wav(input_path: str, output_path: str, sample_rate: int = 16000):
     cmd = [
-        "ffmpeg", 
-        "-i", input_path, 
-        "-ar", str(sample_rate), 
+        "ffmpeg",
+        "-y",
+        "-i", input_path,
+        "-ar", str(sample_rate),
         output_path
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def normalize_audio_file(input_path: str, output_path: str, sample_rate: int = 16000):
+    """Normalize loudness and dynamics for more stable ASR quality.
+
+    This is intentionally conservative so timing stays stable for diarization.
+    """
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        input_path,
+        "-af",
+        "loudnorm=I=-16:TP=-1.5:LRA=11,acompressor=threshold=-21dB:ratio=3:attack=5:release=50",
+        "-ar",
+        str(sample_rate),
+        "-ac",
+        "1",
+        output_path,
     ]
     subprocess.run(cmd, check=True)
 

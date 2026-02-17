@@ -1,95 +1,77 @@
 import os
 import tempfile
-from typing import Dict, List
 import click
 import json
 
-from webinar_processor.utils.ffmpeg import convert_mp4_to_wav, mp4_silence_remove, get_wav_filename
+from webinar_processor.services.transcription_service import diarize_wav, transcribe_wav
+from webinar_processor.utils.ffmpeg import (
+    convert_mp4_to_wav,
+    mp4_silence_remove,
+    get_wav_filename,
+    normalize_audio_file,
+)
 
 
-def diarize_wav(wav_filename: str, transcription_result: List[Dict]):
-    from pyannote.audio import Pipeline
-    from pyannote_whisper.utils import diarize_text
-
-    hf_token = os.getenv("HUGGING_FACE_TOKEN")
-    if hf_token is None:
-        click.echo(click.style('Error: HUGGING_FACE_TOKEN is not set', fg='red'))
-        raise click.Abort()
-
-    pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
-        token=hf_token
-    )
-
-    # Сегментация аудио-файла на реплики спикеров. Путь обязательно абсолютный.
-    diarization_output = pipeline(wav_filename)
-    # In pyannote.audio 4.x, pipeline returns DiarizeOutput dataclass
-    # Extract the speaker_diarization Annotation which has itertracks() and crop() methods
-    diarization_result = diarization_output.speaker_diarization
-
-    diarization_list = []
-    # print the result
-    for turn, _, speaker in diarization_result.itertracks(yield_label=True):
-        diarization_list.append((turn.start, turn.end, f'speaker_{speaker}'))
-
-    # Пересечение расшифровки и сегментаци.
-    final_result = diarize_text(transcription_result, diarization_result)
-
-    # Вывод результата.
-    result = []
-    for seg, spk, text in final_result:
-        segment = {
-            'start': seg.start,
-            'end': seg.end,
-            'speaker': spk,
-            'text': text
-        }
-        result.append(segment)
-    return result
-
-def transcribe_wav(wav_filename: str, language="ru"):
-    import whisper
-
-    model = whisper.load_model("large-v3")
-    asr_result = model.transcribe(wav_filename, language=language)
-    return asr_result
+def _resolve_transcript_path(webinar_path: str, transcript_path: str) -> str:
+    if transcript_path:
+        return transcript_path
+    transcript_dir = os.path.dirname(webinar_path)
+    return os.path.join(transcript_dir, "transcript.json")
 
 
 @click.command()
 @click.argument('webinar_path', nargs=1)
 @click.argument('transcript_path', default='')
 @click.argument('language', nargs=1, default="ru")
-def transcribe(webinar_path: str, transcript_path: str, language: str):
+@click.option(
+    '--normalize-audio/--no-normalize-audio',
+    default=False,
+    show_default=True,
+    help='Normalize loudness before ASR (recommended for phone-call audio).',
+)
+def transcribe(
+    webinar_path: str,
+    transcript_path: str,
+    language: str,
+    normalize_audio: bool,
+):
     """
     Transcribe video file with speaker detection
     """
-    if not transcript_path:
-        transcript_dir = os.path.dirname(webinar_path)
-        transcript_path = os.path.join(transcript_dir, "transcript.json")
+    transcript_path = _resolve_transcript_path(webinar_path, transcript_path)
 
-    # trim video 
+    # Trim video.
     output_file, ext = os.path.splitext(webinar_path)
     output_name = output_file + ".stripped" + ext
+
     # If the input is a wav file, skip silence removal (moviepy can't process wav)
     if os.path.splitext(webinar_path)[1].lower() == ".wav":
-        # Even if the input is a wav file, it may contain silence at the beginning,
-        # which can cause Whisper to behave strangely. So, we should still remove silence.
-        output_name = webinar_path  # TODO: Optionally implement silence removal for wav files as well.
+        output_name = webinar_path
     else:
         mp4_silence_remove(webinar_path, output_name)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         wav_filename = get_wav_filename(output_name, tmpdir)
         convert_mp4_to_wav(output_name, wav_filename)
+        asr_audio_path = wav_filename
 
-        asr_result = transcribe_wav(wav_filename, language=language)
+        if normalize_audio:
+            normalized_wav = os.path.join(tmpdir, "normalized.wav")
+            normalize_audio_file(wav_filename, normalized_wav)
+            asr_audio_path = normalized_wav
+
+        asr_result = transcribe_wav(asr_audio_path, language=language)
 
         asr_path = transcript_path + ".asr"
         with open(asr_path, "w", encoding="utf-8") as json_file:
             serialized_result = json.dumps(asr_result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)
 
-        result = diarize_wav(wav_filename, asr_result)
+        try:
+            result = diarize_wav(asr_audio_path, asr_result)
+        except ValueError as exc:
+            click.echo(click.style(f"Error: {exc}", fg="red"))
+            raise click.Abort() from exc
 
         with open(transcript_path, "w", encoding="utf-8") as json_file:
             serialized_result = json.dumps(result, indent=4, ensure_ascii=False)
@@ -112,7 +94,12 @@ def diarize(webinar_path: str, transcript_path: str):
         with open(transcript_path + ".asr", "r", encoding="utf-8") as json_file:
             asr_result = json.load(json_file)
 
-        result = diarize_wav(wav_filename, asr_result)
+        try:
+            result = diarize_wav(wav_filename, asr_result)
+        except ValueError as exc:
+            click.echo(click.style(f"Error: {exc}", fg="red"))
+            raise click.Abort() from exc
+
         with open(transcript_path, "w", encoding="utf-8") as json_file:
             serialized_result = json.dumps(result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)

@@ -44,6 +44,9 @@ webinar_processor download https://youtu.be/VIDEO_ID -o video/
 # 2. Transcribe with speaker diarization
 webinar_processor transcribe video/recording.mp4
 
+# Optional: normalize low-volume/noisy audio before ASR
+webinar_processor transcribe --normalize-audio video/recording.mp4
+
 # 3. Extract poster frame
 ./poster.sh video/recording.mp4
 
@@ -109,6 +112,16 @@ LLM_QUIZ_MODEL=gpt-5.2
 ```
 
 Priority: task-specific env var > `LLM_DEFAULT_MODEL` > hardcoded defaults.
+
+ASR and diarization settings:
+
+```bash
+# Default ASR model for `transcribe`
+ASR_WHISPER_MODEL=antony66/whisper-large-v3-russian
+
+# Required for pyannote diarization model downloads/inference
+HUGGING_FACE_TOKEN=your_hf_token
+```
 
 ## How article generation works
 
