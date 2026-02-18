@@ -30,7 +30,6 @@ dependencies = [
     "python-dotenv==1.0.0",
     "requests==2.32.5",
     "openai==1.70.0",
-    "moviepy==1.0.3",
     "tenacity==8.2.3",
     "pyannote-whisper @ git+https://github.com/mmua/pyannote-whisper",
     "qwen-asr",

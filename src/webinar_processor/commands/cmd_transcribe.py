@@ -20,14 +20,14 @@ def _resolve_transcript_path(webinar_path: str, transcript_path: str) -> str:
 
 
 @click.command()
-@click.argument('webinar_path', nargs=1)
-@click.argument('transcript_path', default='')
-@click.argument('language', nargs=1, default="ru")
+@click.argument("webinar_path", nargs=1)
+@click.argument("transcript_path", default="")
+@click.argument("language", nargs=1, default="ru")
 @click.option(
-    '--normalize-audio/--no-normalize-audio',
+    "--normalize-audio/--no-normalize-audio",
     default=False,
     show_default=True,
-    help='Normalize loudness before ASR (recommended for phone-call audio).',
+    help="Normalize loudness before ASR (recommended for phone-call audio).",
 )
 def transcribe(
     webinar_path: str,
@@ -44,7 +44,7 @@ def transcribe(
     output_file, ext = os.path.splitext(webinar_path)
     output_name = output_file + ".stripped" + ext
 
-    # If the input is a wav file, skip silence removal (moviepy can't process wav)
+    # WAV files are already audio-only, no video silence to remove
     if os.path.splitext(webinar_path)[1].lower() == ".wav":
         output_name = webinar_path
     else:
@@ -81,8 +81,8 @@ def transcribe(
 
 
 @click.command()
-@click.argument('webinar_path', nargs=1)
-@click.argument('transcript_path', nargs=1)
+@click.argument("webinar_path", nargs=1)
+@click.argument("transcript_path", nargs=1)
 def diarize(webinar_path: str, transcript_path: str):
     """
     Diarize video file with speaker detection after transcription
@@ -104,4 +104,4 @@ def diarize(webinar_path: str, transcript_path: str):
             serialized_result = json.dumps(result, indent=4, ensure_ascii=False)
             json_file.write(serialized_result)
 
-        return asr_result, result 
+        return asr_result, result
