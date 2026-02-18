@@ -34,6 +34,7 @@ dependencies = [
     "tenacity==8.2.3",
     "pyannote-whisper @ git+https://github.com/mmua/pyannote-whisper",
     "qwen-asr",
+    "openai-whisper==20250625",
 ]
 
 [project.urls]
